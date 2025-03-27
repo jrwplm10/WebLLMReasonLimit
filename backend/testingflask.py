@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
-from frontend import mainpage
 
 app = Flask(__name__)
 
