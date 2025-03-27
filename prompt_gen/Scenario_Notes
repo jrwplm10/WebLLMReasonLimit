@@ -1,0 +1,60 @@
+Notes on scenarios
+
+Familial relations
+-Logic rules may be statements
+
+-Relations will be defined as predicates with multiple inputs, such as Brother(Bob, Alice) -> Bob is the brother of Alice
+--Not sure if LogicAsker supports these kind of predicates.
+
+
+
+Predicates to support
+isParent(x, y)
+isChild(x, y)
+
+-Support combos!
+isSibling(x, y)
+isBrother(x, y)
+isSister(x, y)
+Mother, Father (isParent && isFemale/isMale)
+Grandmother, Grandfather
+Uncle, Aunt
+Niece, Nephew
+
+--These are all gendered, so we need some unary predicates
+isMale(x)
+isFemale(x)
+--TODO: Find a good list of gendered names?
+---What about nonbinary? Can add/remove gender information; different problems may/may not use gender info.
+
+--Need a fixed database of the above predicates and related rules...
+--Backbone of question: relationship graph; generate graph, generate questions...
+
+-All subjects (x, y, etc) would be names, or placeholder language ("somebody"?)
+
+-Would need to generate a tree of relationships
+-Hard questions: multi-hop questions
+-Easy questions: re-iterate premises
+
+Travel Planner
+
+-General Scenarios:
+--Day trip plan in a city?
+---Just yes/no/predicate questions?
+
+-Subjects
+--Names (People?)
+--Locations
+
+Predicates:
+Likes(isPerson(x), isPlace(y))
+Dislikes(isPerson(x), isPlace(y))
+
+-Types! More complicated...
+isPerson()
+isPlace()
+
+
+Meal Planner
+
+

@@ -1,0 +1,31 @@
+Notes on Django, may use for website backend:
+https://www.interviewbit.com/blog/django-architecture/
+
+https://docs.djangoproject.com/en/5.1/intro/overview/
+
+Predicates: "Is a" -> Mapping/Function: https://math.libretexts.org/Bookshelves/Combinatorics_and_Discrete_Mathematics/A_Cool_Brisk_Walk_Through_Discrete_Mathematics_(Davies)/08%3A_Logic/8.2%3A_Predicate_logic
+
+Subjects: The variables themselves.
+
+Actions: Very similar to predicates. So actions/predicates
+
+Impersonal Candidates: Global true/false predicates -> "State of the world"; Not applicable to all of our scenarios!
+
+LogicAsker Repo: https://github.com/yxwan123/LogicAsker
+
+LogicAsker General notes:
+(ASK PROF ABOUT ABSENT LICENSE?)
+-rules.py has the subjects/predicates/actions listing for substitution
+-Need to modify inference_problems.py to control the renaming 
+
+-TODO:
+-Fix/adjust logical scenarios to fit? Need to understand logicasker to do so.
+-Flowchart of case generation process.
+
+How generation works:
+
+1) Rule generation: Logic Asker has a predefined set of logical rules it wishes to test against models. It starts the selection randomly
+-- Basic logical rules are accumulated in a chain to build more complicated problems. So a rule is a "mini" problem that accumulates to a larger problem...
+--Each problem has Contradictions, Inferences, Premises, and Propositions. So, answers are generated in the middle of the process.
+--Propositions seem to be pairs of variables, strangely...
+---They're pairs because we substitute predicates???
