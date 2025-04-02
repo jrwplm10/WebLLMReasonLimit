@@ -55,6 +55,18 @@ isPerson()
 isPlace()
 
 
-Meal Planner
+Scenario 3 - Meal Planner
 
+Predicates: 
+Likes(isPerson(x), isFood(y)) – x likes y.
+Dislikes(isPerson(x), isFood(y)) – x dislikes y.
+IsAllergicTo(isPerson(x), isFood(y)) – x is allergic to y.
+Eats(isPerson(x), isDiet(y)) – x follows dietary restriction y.
+Contains(isFood(x), isIngredient(y)) – x contains y.
+CanEat(isPerson(x), isFood(y)) – derivable from Eats and Contains rules.
 
+Types:
+isPerson()
+isFood()
+isDiet()
+isIngredient()
