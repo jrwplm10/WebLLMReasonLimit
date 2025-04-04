@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT NAME | LLM1</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e0ecf8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            background: white;
+            padding: 20px;
+            border: 2px solid black;
+            display: flex;
+            flex-direction: column;
+            height: 80%;
+        }
+        .top-menu {
+            display: flex;
+            justify-content: space-evenly;
+            padding: 10px;
+            background: #b0c4de;
+        }
+        .promptBox {
+            display: flex;
+            flex-direction: column;
+        }
+        .contentStack {
+            display: flex;
+            flex-direction: column;
+        }
+        .top-menu button {
+            padding: 1%;
+            border: none;
+            background: #5a79a5;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+        }
+        .top-menu button:hover {
+            background: #48658e;
+        }
+        .header {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 5px;
+            background: #b0c4de;
+        }
+        .content {
+            display: flex;
+            justify-content: space-between;
+            flex-direction: row;
+            padding: 10px;
+            height: 80%;
+            margin-left: 15%;
+            margin-right: 5%;
+            overflow: auto;
+        }
+        .box {
+            flex: 1;
+            border: 2px solid black;
+            padding: 10px;
+            margin: 5px;
+            background: white;
+        }
+        .singleBox {
+            flex: 1;
+            border: 2px solid black;
+            padding: 6%;
+            background: white;
+            display: flex;
+            overflow:auto;
+            margin-top: 3%;
+            margin-bottom: 3%;
+            width: 100%;
+            height: 100%;
+        }
+        .footer {
+            text-align: center;
+            font-size: 14px;
+            padding: 10px;
+            font-style: italic;
+        }
+        .generateButton {
+            background-color: aquamarine;
+            border-radius: 25px;
+            font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+            font-size: medium;
+            width: 25%;
+            height: 10%;
+            display: block;
+            margin-top: 1%;
+            margin-bottom: 1%;
+            font-size: larger;
+            margin-left: 15%;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                flex-direction: column;
+                align-items: center;
+            }
+            .box {
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-menu">
+            <button onclick="location.href='about.html'">About</button>
+            <button onclick="location.href='llm1.html'">LLM1</button>
+            <button onclick="location.href='llm2.html'">LLM2</button>
+            <button onclick="location.href='llm3.html'">LLM3</button>
+        </div>
+        <div class="header">LLM1</div>
+        <p style="margin-left: 15%; font-weight: italic;">Click the 'Generate' button below</p>
+        <div class="content">
+            <div class="contentStack">
+                <div class="promptBox">
+                    <strong>Scenario:</strong>
+                    <div class="singleBox" id="scenarioBox"></div>
+                    <strong>Easy Question:</strong>
+                    <div class="singleBox" id="easyQuestionBox"></div>
+                    <strong>Hard Question:</strong>
+                    <div class="singleBox" id="hardQuestionBox"></div>
+                </div>
+                <div class="promptBox">
+                    <strong>LLM1 Response - Easy Question:</strong>
+                    <div class="singleBox" id="llm1EasyResponse"></div>
+                    <strong>LLM1 Response - Hard Question:</strong>
+                    <div class="singleBox" id="llm1HardResponse"></div>
+                </div>
+            </div>
+        </div>
+        <button class="generateButton" id="generateScenarioButton">Generate Scenario & Questions</button>
+        <button class="generateButton" id="generateResponseButton">Generate Response</button>
+        <div class="footer">Footer section - (About 16:9 Aspect Ratio)</div>
+    </div>
+
+    <script>
+        // This would be the separate logic-based application that generates the scenario and questions.
+        async function generateScenarioAndQuestions() {
+            try {
+                // This is just a simulating to mimic the generation of the scenario and questions.
+                // Replace this partwith an actual API call or function call from the another app
+                const scenario = "The temperature right now is 90 degrees fahrenheit.";
+                const easyQuestion = "What is the temperature right now?";
+                const hardQuestion = "What will the temperature be in 3 days?";
+
+                // Inserting the generated content into the respective boxes
+                document.getElementById("scenarioBox").innerText = scenario;
+                document.getElementById("easyQuestionBox").innerText = easyQuestion;
+                document.getElementById("hardQuestionBox").innerText = hardQuestion;
+            } catch (error) {
+                console.error('Error generating scenario and questions:', error);
+                alert('Failed to generate scenario and questions. Please try again.');
+            }
+        }
+
+        // This would be the system that generates the responses via the LLM.
+        async function generateLLMResponse(question, questionType) {
+            try {
+                // Placeholder for API to fetch LLM response, e.g., OpenAI's API
+                const API_KEY = 'INSERT API KEY'; 
+                const API_URL = 'INSERT API URL';
+
+                const requestBody = {
+                    model: 'INSERT MODEL NAME', 
+                    prompt: question,
+                    max_tokens: 150, // MODIFY
+                    temperature: 0.7 // MODIFY
+                };
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch data from API');
+                }
+
+                const data = await response.json();
+                const generatedResponse = data.choices[0].text.trim();
+
+                if (questionType === 'easy') {
+                    document.getElementById("llm1EasyResponse").innerText = generatedResponse;
+                } else if (questionType === 'hard') {
+                    document.getElementById("llm1HardResponse").innerText = generatedResponse;
+                }
+            } catch (error) {
+                console.error('Error generating LLM response:', error);
+                alert('Failed to generate response. Please try again.');
+            }
+        }
+
+        // Event listener for 'Generate Scenario & Questions' button
+        document.getElementById("generateScenarioButton").addEventListener("click", generateScenarioAndQuestions);
+
+        // Event listener for 'Generate Response' button
+        document.getElementById("generateResponseButton").addEventListener("click", function() {
+            const easyQuestion = document.getElementById("easyQuestionBox").innerText;
+            const hardQuestion = document.getElementById("hardQuestionBox").innerText;
+
+            if (easyQuestion && hardQuestion) {
+                // Generate responses for both questions
+                generateLLMResponse(easyQuestion, 'easy');
+                generateLLMResponse(hardQuestion, 'hard');
+            } else {
+                alert("Please generate the scenario and questions first.");
+            }
+        });
+    </script>
+</body>
+</html>
