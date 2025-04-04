@@ -4,11 +4,11 @@ from openai import OpenAI
 app = Flask(__name__)
 
 # Set your OpenAI API key here
-client = OpenAI(api_key="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")
+client = OpenAI(api_key="None")
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('frontend/index.html')
 
 @app.route('/chat', methods=['POST'])
 def chat():
