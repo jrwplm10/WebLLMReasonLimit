@@ -83,8 +83,6 @@ def test_models():
     print("Prompt=" + prompt2)
     print("Correct Answer=Unknown")
     print("Response:" + query_openai("gpt-4o", prompt2))
-    
-test_models()
 
-#if __name__ == '__main__':
-    #app.run(debug=True)
+if __name__ == '__main__':
+    app.run(debug=True)
