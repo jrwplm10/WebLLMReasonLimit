@@ -48,7 +48,12 @@ def prompt_model(model_name, prompt):
     response = model_cache[model_name](prompt, max_new_tokens=200, temperature=0.7)
     return response[0]["generated_text"]
 
-def query_openai(model_name, prompt):
+@app.route('/query_openai', methods=['POST'])
+def query_openai():
+    data = request.get_json()
+    prompt = data.get('prompt')
+    model_name = data.get('prompt')
+    
     completion = openai_client.chat.completions.create(
         model=model_name,
         messages=[
@@ -60,29 +65,18 @@ def query_openai(model_name, prompt):
         ],
     )
     
-    return completion.choices[0].message.content
+    answer = completion.choices[0].message.content
+    return jsonify({"response": answer})
+
+@app.route('/generate_prompt', methods=['POST'])
+def generate_prompt():
+    prompt1 = "If it is raining outside, then Bob is wearing a coat. If it is raining outside, then the ground is wet. If the ground is wet, then Bob is wearing boots. It is raining outside. Is Bob wearing boots?"
+    prompt2 = "If it is raining outside, then Bob is wearing a coat. If it is raining outside, then the ground is wet. If the ground is wet, then Bob is wearing boots. Bob is wearing boots. Is it raining outside?"
+    return jsonify({"response": prompt1})
 
 @app.route('/')
 def index():
     return render_template('index.html')
-
-def test_models():
-    #print(prompt_model("deepseek-ai/deepseek-R1", "Hello, what are you?"))
-    #print(prompt_model("meta-llama/Llama-3.2-3B-Instruct", "Hello, what are you?"))
-    prompt1 = """If it is raining outside, then Bob is wearing a coat. If it is raining outside, then the ground is wet. If the ground is wet, then Bob is wearing boots. It is raining outside. Is Bob wearing boots?"""
-    prompt2 = """If it is raining outside, then Bob is wearing a coat. If it is raining outside, then the ground is wet. If the ground is wet, then Bob is wearing boots. Bob is wearing boots. Is it raining outside?"""
-
-    print("Model = gpt-4o")
-    print("Prompt = " + prompt1)
-    print("Correct Answer = Yes")
-    print("Response:" + query_openai("gpt-4o", prompt1))
-
-    print()
-
-    print("Model=gpt-4o")
-    print("Prompt=" + prompt2)
-    print("Correct Answer=Unknown")
-    print("Response:" + query_openai("gpt-4o", prompt2))
 
 if __name__ == '__main__':
     app.run(debug=True)
