@@ -1,0 +1,32 @@
+JL - Making notes on python libraries to use to streamline the process
+
+sympy is very mature. Not sure if it's easy to build logical predicates though:
+https://docs.sympy.org/latest/index.html
+
+-Not sure how useful this one is:
+https://github.com/evhub/pyprover
+
+-Might be useful, not sure how to apply this:
+https://ozekik.github.io/mathesis/
+
+-Python binding for prolog:
+https://pypi.org/project/pytholog/
+https://en.wikipedia.org/wiki/Prolog
+
+--So far, all of these libraries SOLVE logic/predicates, not generate them...
+How does logicAsker do it...
+-A list of inference rules are defined. Each rule has the following
+--Premises. Clauses for the rule
+--Inferences. Given the premises, what can be inferred
+--Contradictions. What can NOT be inferred. (unrelated)
+--Bookkeeping: Rule name and a list of propositions.
+
+-How to generate another rule/relation?
+--Logic asker uses the term "unification". Research:
+--https://hanielb.github.io/2021.2-lp/12-prolog/unification/
+
+To unify: Roughly: find substitutions to a series of equations that allow it to be true (related to satisfiability)
+--Substitutions may not be true/false values, but variables/predicates???
+
+Using prolog-swi:
+https://www.swi-prolog.org/build/snap.html
