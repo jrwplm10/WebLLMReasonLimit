@@ -4,15 +4,18 @@ import os
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextGenerationPipeline
 import torch
 
-client = OpenAI(api_key="None")
+with open("keys/openai.key", 'r') as f:
+    API_KEY = f.readline()
+    API_KEY = API_KEY.rstrip('\n')
+openai_client = OpenAI(api_key=API_KEY)
 
 # Absolute path to frontend directory gathered from relative location
-frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
+FRONTEND_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
 
 # Building the flask app with new relative path
 app = Flask(__name__,
-            static_folder=os.path.join(frontend_path),
-            template_folder=frontend_path)
+            static_folder=os.path.join(FRONTEND_PATH),
+            template_folder=FRONTEND_PATH)
 
 def load_model(model_name):
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
@@ -45,11 +48,43 @@ def prompt_model(model_name, prompt):
     response = model_cache[model_name](prompt, max_new_tokens=200, temperature=0.7)
     return response[0]["generated_text"]
 
+def query_openai(model_name, prompt):
+    completion = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "developer", "content": "You are being prompted with a series of propositional statements and a question. Your job is to determine the answer to the question as 'yes', 'no', or in the case that the answer is unknown, 'unknown'. Provide a brief paragraph explaining your reasoning for your answer, but it is critical that this paragraph is brief and contained in one single paragraph with no line breaks. End your response with 'yes', 'no', or 'unknown', specifically structured as 'Final Answer = [Your Answer]'. Your response should ONLY contain a paragraph of reasoning and a final answer."},
+            {
+                "role": "user",
+                "content": prompt,
+            },
+        ],
+    )
+    
+    return completion.choices[0].message.content
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
-#print(prompt_model("deepseek-ai/deepseek-R1", "Hello, what are you?"))
+def test_models():
+    #print(prompt_model("deepseek-ai/deepseek-R1", "Hello, what are you?"))
+    #print(prompt_model("meta-llama/Llama-3.2-3B-Instruct", "Hello, what are you?"))
+    prompt1 = """If it is raining outside, then Bob is wearing a coat. If it is raining outside, then the ground is wet. If the ground is wet, then Bob is wearing boots. It is raining outside. Is Bob wearing boots?"""
+    prompt2 = """If it is raining outside, then Bob is wearing a coat. If it is raining outside, then the ground is wet. If the ground is wet, then Bob is wearing boots. Bob is wearing boots. Is it raining outside?"""
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    print("Model = gpt-4o")
+    print("Prompt = " + prompt1)
+    print("Correct Answer = Yes")
+    print("Response:" + query_openai("gpt-4o", prompt1))
+
+    print()
+
+    print("Model=gpt-4o")
+    print("Prompt=" + prompt2)
+    print("Correct Answer=Unknown")
+    print("Response:" + query_openai("gpt-4o", prompt2))
+    
+test_models()
+
+#if __name__ == '__main__':
+    #app.run(debug=True)
