@@ -120,10 +120,10 @@
 <body>
     <div class="container">
         <div class="top-menu">
-            <button onclick="location.href='about'">About</button>
-            <button onclick="location.href='index'">LLM1</button>
-            <button onclick="location.href='llm2'">LLM2</button>
-            <button onclick="location.href='llm3'">LLM3</button>
+            <button onclick="location.href='about.html'">About</button>
+            <button onclick="location.href='index.html'">LLM1</button>
+            <button onclick="location.href='llm2.html'">LLM2</button>
+            <button onclick="location.href='llm3.html'">LLM3</button>
         </div>
         <div class="header">LLM1</div>
         <p style="margin-left: 15%; font-weight: italic;">Click the 'Generate' button below</p>
@@ -132,16 +132,10 @@
                 <div class="promptBox">
                     <strong>Scenario:</strong>
                     <div class="singleBox" id="scenarioBox"></div>
-                    <strong>Easy Question:</strong>
-                    <div class="singleBox" id="easyQuestionBox"></div>
-                    <strong>Hard Question:</strong>
-                    <div class="singleBox" id="hardQuestionBox"></div>
                 </div>
                 <div class="promptBox">
-                    <strong>LLM1 Response - Easy Question:</strong>
-                    <div class="singleBox" id="llm1EasyResponse"></div>
-                    <strong>LLM1 Response - Hard Question:</strong>
-                    <div class="singleBox" id="llm1HardResponse"></div>
+                    <strong>LLM1 Response</strong>
+                    <div class="singleBox" id="responseBox"></div>
                 </div>
             </div>
         </div>
@@ -195,7 +189,7 @@
         }
 
 
-        async function generateLLMResponse(question, questionType) {
+/*         async function generateLLMResponse(question, questionType) {
             try {
                 const response = await fetch('/query_openai', {
                     method: 'POST',
@@ -213,6 +207,28 @@
                 } else if (questionType === 'hard') {
                     document.getElementById("llm1HardResponse").innerText = generatedResponse;
                 }
+            } catch (error) {
+                console.error('Error generating LLM response:', error);
+                alert('Failed to generate response. Please try again.');
+    }
+} */
+
+async function generateLLMResponse(scenario) {
+            try {
+                const response = await fetch('/query_openai', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt: scenario, model_name: "gpt-4" })
+                });
+                
+                const data = await response.json();
+                const generatedResponse = data.response;
+
+                document.getElementById("responseBox").innerText = generatedResponse;
+                
+                
             } catch (error) {
                 console.error('Error generating LLM response:', error);
                 alert('Failed to generate response. Please try again.');
@@ -267,8 +283,14 @@
 
         // Event listener for 'Generate Response' button
         document.getElementById("generateResponseButton").addEventListener("click", function() {
-            const easyQuestion = document.getElementById("easyQuestionBox").innerText;
-            const hardQuestion = document.getElementById("hardQuestionBox").innerText;
+            // const easyQuestion = document.getElementById("easyQuestionBox").innerText;
+            // const hardQuestion = document.getElementById("hardQuestionBox").innerText;
+
+            const scenarioInput = document.getElementById("scenarioBox").innerText;
+
+            if (scenarioInput) {
+                generateLLMResponse
+            }
 
             if (easyQuestion && hardQuestion) {
                 // Generate responses for both questions
