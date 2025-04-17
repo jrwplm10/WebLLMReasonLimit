@@ -48,5 +48,25 @@ def generate_prompt():
 def index():
     return render_template('index.html')
 
+@app.route('/index')
+def index2():
+    return render_template('index.html')
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+@app.route('/llm1')
+def llm1():
+    return render_template('llm1.html')
+
+@app.route('/llm2')
+def llm2():
+    return render_template('llm2.html')
+
+@app.route('/llm3')
+def llm3():
+    return render_template('llm3.html')
+
 if __name__ == '__main__':
     app.run(debug=True)
