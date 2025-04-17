@@ -289,13 +289,7 @@ async function generateLLMResponse(scenario) {
             const scenarioInput = document.getElementById("scenarioBox").innerText;
 
             if (scenarioInput) {
-                generateLLMResponse
-            }
-
-            if (easyQuestion && hardQuestion) {
-                // Generate responses for both questions
-                generateLLMResponse(easyQuestion, 'easy');
-                generateLLMResponse(hardQuestion, 'hard');
+                generateLLMResponse(scenarioInput);
             } else {
                 alert("Please generate the scenario and questions first.");
             }
