@@ -151,7 +151,8 @@
     </div>
 
     <script>
-        // This would be the separate logic-based application that generates the scenario and questions.
+        
+        /* // This would be the separate logic-based application that generates the scenario and questions.
         async function generateScenarioAndQuestions() {
             try {
                 // This is just a simulating to mimic the generation of the scenario and questions.
@@ -168,9 +169,59 @@
                 console.error('Error generating scenario and questions:', error);
                 alert('Failed to generate scenario and questions. Please try again.');
             }
+        } */
+
+        async function generateScenarioAndQuestions() {
+            try {
+                const response = await fetch('/generate_prompt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                const scenario = data.response;
+                
+                document.getElementById("scenarioBox").innerText = scenario;
+                //document.getElementById("easyQuestionBox").innerText = "Is Bob wearing boots?"; // Or extract dynamically if needed
+                //document.getElementById("hardQuestionBox").innerText = "Is it raining outside?";
+            
+            } catch (error) {
+                
+                console.error('Error generating scenario and questions:', error);
+                alert('Failed to generate scenario and questions. Please try again.');
+            }
         }
 
-        // This would be the system that generates the responses via the LLM.
+
+        async function generateLLMResponse(question, questionType) {
+            try {
+                const response = await fetch('/query_openai', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt: question, model_name: "gpt-4" })
+                });
+                
+                const data = await response.json();
+                const generatedResponse = data.response;
+                
+                if (questionType === 'easy') {
+                    document.getElementById("llm1EasyResponse").innerText = generatedResponse;
+                } else if (questionType === 'hard') {
+                    document.getElementById("llm1HardResponse").innerText = generatedResponse;
+                }
+            } catch (error) {
+                console.error('Error generating LLM response:', error);
+                alert('Failed to generate response. Please try again.');
+    }
+}
+
+
+
+        /* // This would be the system that generates the responses via the LLM.
         async function generateLLMResponse(question, questionType) {
             try {
                 // Placeholder for API to fetch LLM response, e.g., OpenAI's API
@@ -209,7 +260,7 @@
                 console.error('Error generating LLM response:', error);
                 alert('Failed to generate response. Please try again.');
             }
-        }
+        } */
 
         // Event listener for 'Generate Scenario & Questions' button
         document.getElementById("generateScenarioButton").addEventListener("click", generateScenarioAndQuestions);
