@@ -38,8 +38,52 @@ def add_kb_atom(kb_list, atom):
 
 # Try all possibilities
 # We need some sort of bfs/dfs modified by a regex...
-def exists_relationship_path(atom, node_regex):
-    pass
+
+# Parent/child check: Make sure we're at the same level.
+def check_relationship_path(proposed_predicate, kb_list, node_regex):
+    # True means good, false means bad.
+
+    # kind a bfs search.
+    # atom is the root.
+
+    # Empty for now.
+    reached_set = {
+
+    }
+
+    frontier_set = {
+        proposed_predicate[0]: 0
+    }
+
+    new_frontier_set = {
+
+
+    }
+
+    # parse predicates to see if there's a path!
+    offset_level = 0
+    if type(proposed_predicate) in [Mother, Father, Parent]:
+        offset_level = -1
+    elif type(proposed_predicate) in [Sibling, Sister, Brother]:
+        offset_level = 0
+    elif type(proposed_predicate) in [Child]:
+        offset_level = 1
+
+    for item in kb_list:
+        if type(item) != str:
+            if item[0] in reached_set or item[1] in reached_set or item[0] in frontier_set or item[1] in frontier_set:
+                if item[0] == item[1]:
+                    continue
+                else:
+                    if type(item) in [Mother, Father, Parent]:
+                        pass
+            elif item[1] in reached_set or item[1] in frontier_set: # Reverse relationship.
+                pass
+
+    while len(frontier_set) != 0:
+        pass
+
+    return True
 
 class Predicate:
     def __init__(self, arglist):
@@ -157,6 +201,7 @@ class Parent(Predicate):
 
             # Check opposite relationships ... difficult!
 
+
             return True
 
 class Mother(Parent):
@@ -203,13 +248,32 @@ def namelike_strs(gen_count, name_len=6):
     return names
 
 
+def parse_names(name_path):
+    with open(name_path, 'r') as f:
+        file_lines = f.readlines()
+
+    # 150 boy, 150 girl names.
+    num_names = 150
+    male_names = []
+    female_names = []
+    for idx, line in enumerate(file_lines):
+        tokens = line.split(" ")
+        if idx < num_names:
+            male_names.append(tokens[1])
+        else:
+            female_names.append(tokens[1])
+
+    return male_names, female_names
+
 def basic_test_scenario():
     kb_list = []
 
     allowed_predicates = [Parent, Mother, Father, Child, Sibling, Sister, Brother]
     # Names, basically
     # Using randomized names
-    allowed_atoms = namelike_strs(5, name_len=6)
+    # allowed_atoms = namelike_strs(5, name_len=6)
+    male_names, female_names = parse_names('names.txt')
+    allowed_atoms = male_names + female_names
 
     # For now, add all atoms
     for atom in allowed_atoms:
