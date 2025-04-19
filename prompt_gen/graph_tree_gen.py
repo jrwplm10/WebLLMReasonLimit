@@ -483,6 +483,23 @@ def generate_scenario(driver, male_names, female_names, hard_sample_count, num_p
     return people, premises, easy_q, hard_qs
 
 
+def convert_format(old_pickle, new_pickle):
+    with open(old_pickle, 'rb') as f:
+        results = pickle.load(f)
+
+    scenarios = []
+    for r in results:
+        record = {
+            'people': r[0],
+            'premises': [x.get_nl_string() for x in r[1]],
+            'easy_infer': r[2].get_nl_string(),
+            'hard_infer': [x.get_nl_string() for x in r[3]],
+        }
+        scenarios.append(record)
+
+    with open(new_pickle, 'wb') as f2:
+        pickle.dump(scenarios, f2)
+
 def main(test_scenarios_path):
     # For now, generate a whole bunch of scenarios.
     print("Parsing names...")
@@ -490,7 +507,7 @@ def main(test_scenarios_path):
     full_nameset = male_names + female_names
 
     print("Starting scenario generation...")
-    num_scenarios = 1000
+    num_scenarios = 10000
 
     uri = "neo4j://localhost:7687"
     # Really basic local database for development. Not a production instance...
@@ -526,4 +543,6 @@ def main(test_scenarios_path):
     print("Done.")
 
 if __name__ == "__main__":
-    main('Test_1000.pickle')
+    main('Test_largeset.pickle')
+    # convert_format('Test_2000.pickle', 'Scenarios_2000.pickle')
+    # convert_format('Test_largeset.pickle', 'Scenarios_10000.pickle')
