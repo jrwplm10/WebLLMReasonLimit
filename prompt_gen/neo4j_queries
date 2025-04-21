@@ -1,0 +1,71 @@
+Listing some queries to test with/use
+
+# DB creation:
+
+CREATE (A:Person {name: 'A'}),
+(B:Person {name: 'B'}),
+(C:Person {name: 'C'}),
+(D:Person {name: 'D'}),
+(E:Person {name: 'E'}),
+(F:Person {name: 'F'}),
+(G:Person {name: 'G'}),
+(H:Person {name: 'H'}),
+(I:Person {name: 'I'}),
+(A)-[:Parent]->(C),
+(A)-[:Parent]->(D),
+(A)-[:Parent]->(E),
+(B)-[:Parent]->(C),
+(B)-[:Parent]->(D),
+(B)-[:Parent]->(E),
+(G)-[:Parent]->(B),
+(E)-[:Parent]->(F),
+(H)-[:Sibling]->(C),
+(I)-[:Sibling]->(H)
+
+# Find parents of E
+MATCH (n)-[:Parent]->({name:'E'}) return n
+
+# Test relationships
+MATCH (n:Person {name:'G'})-[:Parent]->({name:'E'}) return n  # Should return nothing
+MATCH (n:Person {name:'B'})-[:Parent]->({name:'E'}) return n  # Returns B.
+
+# Clear DB
+Match (n) Detach Delete n
+
+# I parent test.
+MATCH ({name:'I'})-[:Sibling]-(:Person)
+((:Person)-[:Sibling]-(:Person)){1,10}
+(:Person)<-[:Parent]-(p)
+return p
+
+# E sibling test - Not easy!
+MATCH ({name:'E'})<-[:Parent]-()-[:Parent]->(s:Person)
+((s:Person)-[:Sibling]-(:Person) ){1,10}
+return s
+
+# Implication test - create sibling implications.
+MATCH (a:Person)<-[:Parent]-(p:Person)-[:Parent]->(b:Person)
+CREATE (a)-[:Sibling {implication_level:1}]-(b)
+
+# Important for implications:
+# https://stackoverflow.com/questions/36744819/create-a-relationship-only-if-not-exist-in-neo4j
+# Graph algos are available: https://neo4j.com/docs/graph-data-science/current/algorithms/
+
+# Issue: Merge behaves unexpectedly!
+# MERGE (:Person {name: 'I'})-[:Sibling {random_prop:'yes'}]->(:Person {name: 'H'})
+
+# Behavior:
+# If nothing matches, create nodes to make it match.
+# But if something does match, can ignore or set some property!
+
+# Test the "parent loop" case.
+CREATE (A:Person {name: 'A'}),
+(B:Person {name: 'B'}),
+(C:Person {name: 'C'}),
+(D:Person {name: 'D'}),
+(E:Person {name: 'E'}),
+(A)-[:Parent]->(B),
+(B)-[:Parent]->(C),
+(C)-[:Parent]->(A),
+(D)-[:Parent]->(A),
+(E)-[:Parent]->(E)
