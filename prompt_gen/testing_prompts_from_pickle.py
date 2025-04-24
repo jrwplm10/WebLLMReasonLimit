@@ -67,7 +67,7 @@ def query_chatgpt(model, prompt, log_file='processing_log.json'):
 
 def loadData():
     # for reading also binary mode is important
-    dbfile = open('pickles/Scenarios_2000.pickle', 'rb')
+    dbfile = open('pickles/Scenarios_10000.pickle', 'rb')
     p = pickle.load(dbfile)
     dbfile.close()
     return p
@@ -107,6 +107,7 @@ def main():
         #threads.append(t)
         t.start()
         t.join()
+        time.sleep(20)
         
     #for thread in threads:
     #    thread.join()
