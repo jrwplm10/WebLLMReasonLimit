@@ -3,6 +3,7 @@ from openai import OpenAI
 import threading
 import os
 import json
+import time
 
 log_lock = threading.Lock() # global locking mechanism during results logging
 
@@ -35,28 +36,34 @@ def log_result(prompt, answer, status, log_file='processing_log.json'):
             json.dump(log_data, f, indent=4)
 
 def query_chatgpt(model, prompt, log_file='processing_log.json'):
-    try:
-        completion = openai_client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "developer", "content": "You are being prompted with a scenario. Your job is to determine the answer to the question as 'yes', 'no', or in the case that the answer is unknown, 'unknown'. Provide a brief paragraph explaining your reasoning for your answer, but it is critical that this paragraph is brief and contained in one single paragraph with no line breaks. End your response with 'yes', 'no', or 'unknown', specifically structured as 'Final Answer = [Your Answer]'. Your response should ONLY contain a paragraph of reasoning and a final answer."},
-            {
-                "role": "user",
-                "content": prompt,
-            },
-        ],
-        )
+    for i in range(5):
+        try:
+            completion = openai_client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "developer", "content": "You are being prompted with a scenario. Your job is to determine the answer to the question as 'yes', 'no', or in the case that the answer is unknown, 'unknown'. Provide a brief paragraph explaining your reasoning for your answer, but it is critical that this paragraph is brief and contained in one single paragraph with no line breaks. End your response with 'yes', 'no', or 'unknown', specifically structured as 'Final Answer = [Your Answer]'. Your response should ONLY contain a paragraph of reasoning and a final answer."},
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ],
+            )
     
-        answer = completion.choices[0].message.content
-        print(f"Prompt: {prompt}\nAnswer: {answer}\n")
-        #print(prompt + '\n')
-        #print(answer + '\n')
-        
-        log_result(prompt, answer, status="success", log_file=log_file)
+            answer = completion.choices[0].message.content
+            if answer[-4:-1].lower() == "yes":
+                print("Success")
+                log_result(prompt, answer, status="success", log_file=log_file)
+            else:
+                print("failure")
+                log_result(prompt, answer, status="failure", log_file=log_file)
+            #print(f"Prompt: {prompt}\nAnswer: {answer}\n")
+            #print(prompt + '\n')
+            #print(answer + '\n')
     
-    except Exception as e:
-        print(f"Error processing prompt: {prompt}\nError: {str(e)}")
-        log_result(prompt, "", status="error", log_file=log_file)
+        except Exception as e:
+            print(f"Error processing prompt: {prompt}\nError: {str(e)}")
+            time.sleep(10)
+            #log_result(prompt, "", status="error", log_file=log_file)
 
 def loadData():
     # for reading also binary mode is important
@@ -94,8 +101,15 @@ def threaded_query(scenario, log_file='processing_log.json'):
     
 def main():
     scenarios = loadData()
+    #threads = []
     for s in scenarios:
-        threaded_query(s)
+        t = threading.Thread(target=threaded_query, args=[s])
+        #threads.append(t)
+        t.start()
+        t.join()
+        
+    #for thread in threads:
+    #    thread.join()
 
 if __name__ == '__main__':
     main()
