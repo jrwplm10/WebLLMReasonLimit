@@ -22,7 +22,7 @@ model_cache = {}
 def query_openai():
     data = request.get_json()
     prompt = data.get('prompt')
-    model_name = data.get('prompt')
+    model_name = data.get('model_name')
     
     completion = openai_client.chat.completions.create(
         model=model_name,
