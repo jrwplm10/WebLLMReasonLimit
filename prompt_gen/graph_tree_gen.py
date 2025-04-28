@@ -657,29 +657,49 @@ def debug_scenario():
     db_pass = input("Enter db password: ")
     auth = ("neo4j", db_pass)  # local db, only for development...
 
-    # debug_people = ["Carter", "Nevaeh", "Cecilia", "Isabelle", "Emilia", "Elena", "Ethan", "Henry"]
-    debug_people = rebuild_people_list("Carter, Nevaeh, Cecilia, Isabelle, Emilia, Elena, Ethan, Henry.")
-    # Isabelle is a sister of Emilia.
-    # Elena is a child of Cecilia.
-    # Henry is a child of Elena.
-    # Elena is a child of Emilia.
-    # Carter is a brother of Ethan.
-    # Carter is a parent of Henry.
-    # Nevaeh is a sister of Emilia.
-    # Isabelle is a sister of Cecilia.
-    # Carter is a father of Henry.
-    # Cecilia is a sister of Isabelle.
+    # # debug_people = ["Carter", "Nevaeh", "Cecilia", "Isabelle", "Emilia", "Elena", "Ethan", "Henry"]
+    # debug_people = rebuild_people_list("Carter, Nevaeh, Cecilia, Isabelle, Emilia, Elena, Ethan, Henry.")
+    # # Isabelle is a sister of Emilia.
+    # # Elena is a child of Cecilia.
+    # # Henry is a child of Elena.
+    # # Elena is a child of Emilia.
+    # # Carter is a brother of Ethan.
+    # # Carter is a parent of Henry.
+    # # Nevaeh is a sister of Emilia.
+    # # Isabelle is a sister of Cecilia.
+    # # Carter is a father of Henry.
+    # # Cecilia is a sister of Isabelle.
+    # debug_predicates = [
+    #     rebuild_predicate("Isabelle is a sister of Emilia."),
+    #     rebuild_predicate("Elena is a child of Cecilia."),
+    #     rebuild_predicate("Henry is a child of Elena."),
+    #     rebuild_predicate("Elena is a child of Emilia."),
+    #     rebuild_predicate("Carter is a brother of Ethan."),
+    #     rebuild_predicate("Carter is a parent of Henry."),
+    #     rebuild_predicate("Nevaeh is a sister of Emilia."),
+    #     rebuild_predicate("Isabelle is a sister of Cecilia."),
+    #     rebuild_predicate("Carter is a father of Henry."),
+    #     rebuild_predicate("Cecilia is a sister of Isabelle."),
+    # ]
+
+    debug_people = rebuild_people_list("Levi, Alexandria, Kaiden, Bentley, Zion, Sawyer, Declan.")
+    # Alexandria is a mother of Levi.
+    # Levi is a father of Sawyer.
+    # Kaiden is a child of Bentley.
+    # Bentley is a parent of Kaiden.
+    # Levi is a child of Alexandria.
+    # Sawyer is a child of Zion.
+    # Bentley is a child of Sawyer.
+    # Is this statement true: Zion is a parent of Sawyer.
+
     debug_predicates = [
-        rebuild_predicate("Isabelle is a sister of Emilia."),
-        rebuild_predicate("Elena is a child of Cecilia."),
-        rebuild_predicate("Henry is a child of Elena."),
-        rebuild_predicate("Elena is a child of Emilia."),
-        rebuild_predicate("Carter is a brother of Ethan."),
-        rebuild_predicate("Carter is a parent of Henry."),
-        rebuild_predicate("Nevaeh is a sister of Emilia."),
-        rebuild_predicate("Isabelle is a sister of Cecilia."),
-        rebuild_predicate("Carter is a father of Henry."),
-        rebuild_predicate("Cecilia is a sister of Isabelle."),
+        rebuild_predicate("Alexandria is a mother of Levi."),
+        rebuild_predicate("Levi is a father of Sawyer."),
+        rebuild_predicate("Kaiden is a child of Bentley."),
+        rebuild_predicate("Bentley is a parent of Kaiden."),
+        rebuild_predicate("Levi is a child of Alexandria."),
+        rebuild_predicate("Sawyer is a child of Zion."),
+        rebuild_predicate("Bentley is a child of Sawyer."),
     ]
 
     with GraphDatabase.driver(uri, auth=auth) as driver:
@@ -691,7 +711,7 @@ if __name__ == "__main__":
     # convert_format('Test_2000.pickle', 'Scenarios_2000.pickle')
     # convert_format('Test_largeset.pickle', 'Scenarios_10000.pickle')
     # main('test_mini.pickle', 100)
-    main('test_moderate.pickle', 1000)
+    # main('test_moderate.pickle', 1000)
 
     # Debugging
-    # debug_scenario()
+    debug_scenario()
