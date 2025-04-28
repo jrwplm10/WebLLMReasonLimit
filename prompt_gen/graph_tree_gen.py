@@ -8,6 +8,7 @@ import random
 import copy
 import uuid
 import pickle
+import re
 
 # Using neo4j for building a knowledge base, checking relationships
 import neo4j
@@ -59,13 +60,14 @@ class PredicatePattern:
     # def get_args(self, argslist):
     #     return self.argslist
 
+
 class Male(PredicatePattern):
     def __init__(self, arglist):
         super().__init__(arglist)
         self.graphDBType = "Male"
 
     def get_nl_string(self):
-        return self.arglist[0] + " is male."
+        return self.arglist[0] + " is male"
 
     def dbType(self):
         return self.graphDBType
@@ -82,7 +84,7 @@ class Female(PredicatePattern):
         self.graphDBType = "Female"
 
     def get_nl_string(self):
-        return self.arglist[0] + " is female."
+        return self.arglist[0] + " is female"
 
     def addquery(self):
         variable_preamble = "MATCH (a:Person {name:$arg0})"
@@ -186,6 +188,7 @@ STR_TO_PREDICATES = {
     'Brother': Brother,
 }
 
+
 def namelike_strs(gen_count, name_len=6):
     # choose name_len random chars.
     names = []
@@ -254,7 +257,9 @@ def build_implications(db_driver, implication_level):
         # Shared Parents imply shared siblings
         "MATCH (a:Person)-[:Child]->(p:Person)<-[:Child]-(b:Person) MERGE (b)-[r:Sibling]->(a) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
         # Siblings are two-way.
-        "MATCH (a:Person)-[:Sibling]->(b:Person) MERGE (b)-[r:Sibling]->(a) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level"
+        "MATCH (a:Person)-[:Sibling]->(b:Person) MERGE (b)-[r:Sibling]->(a) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        # Siblings are transitive, given scenario changes.
+        "MATCH (a:Person)-[:Sibling]->(b:Person)-[:Sibling]->(c:Person) MERGE (a)-[r:Sibling]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level"
     ]
 
     for impl in implications:
@@ -283,6 +288,13 @@ def check_contradictions(db_driver, max_loop_length):
         # 2 parents max
         # "MATCH (a:Person)-[:Child]->(p:Person) WHERE count(p) > 2",
         "MATCH (p:Person) WHERE COUNT{(p:Person)<-[:Parent]-(a:Person)} > 2 return p",
+        # Parents must be of opposite gender - ignore step-relation issues.
+        "MATCH (a:Person)-[:Male]->(a:Person)-[:Parent]->(p:Person)<-[:Parent]-(b:Person)-[:Male]->(b:Person) return p",
+        "MATCH (a:Person)-[:Female]->(a:Person)-[:Parent]->(p:Person)<-[:Parent]-(b:Person)-[:Female]->(b:Person) return p",
+
+        # Siblings will not be parents.
+        "MATCH (a:Person)-[:Parent]->(p:Person)<-[:Parent]-(b:Person) MATCH (a:Person)-[:Sibling]->(b:Person) return a",
+
         # Colliding relationships TODO: Check
         "MATCH (a:Person)-[:Child]->(p:Person)-[:Child]->(a:Person) RETURN a",
         # No parent loops!!!. Inspiration: https://stackoverflow.com/questions/45427562/find-loops-in-neo4j
@@ -313,7 +325,7 @@ def get_rand_inference_relation(db_driver):
 QUESTION_STR = "Is it correct that {}?"
 
 # Quickstart: https://neo4j.com/docs/python-manual/current/
-def generate_scenario(driver, male_names, female_names, hard_sample_count, num_people=5, num_rels_target=7):
+def generate_scenario(driver, male_names, female_names, hard_sample_count, num_people=5, num_rels_target=7, debug_predicates=None, debug_people=None):
 
     # print("Begin scenario generation...")
     max_implications = num_people  # Maximum number of times we expand implications.
@@ -331,7 +343,10 @@ def generate_scenario(driver, male_names, female_names, hard_sample_count, num_p
     temp = driver.execute_query("MATCH (n) DETACH DELETE n",
                          database_="neo4j")
 
-    nameset = [str(uuid.uuid4()) for x in range(num_people)] # we rebind to real names later in the process.
+    if debug_people is None:
+        nameset = [str(uuid.uuid4()) for x in range(num_people)] # we rebind to real names later in the process.
+    else:
+        nameset = debug_people
     # temp.summary.counters .nodes_created .relationships_created .properties_set
     # Put all of the nodes in the database.
     for name in nameset:
@@ -341,16 +356,23 @@ def generate_scenario(driver, male_names, female_names, hard_sample_count, num_p
 
     failcount = 0
     tries = 0
+    debug_index = 0
     while len(premises) < num_rels_target and tries < max_tries:
         tries += 1
 
-        # Try to add a relationship.
-        # Randomly choose 2 names.
-        arg_names = random.sample(nameset, k=2)
+        if debug_predicates is None:
 
-        # Randomly choose a relationship
-        relationship_type = random.choice(predicate_options)
-        relationship = relationship_type(arg_names)
+            # Try to add a relationship.
+            # Randomly choose 2 names.
+            arg_names = random.sample(nameset, k=2)
+
+            # Randomly choose a relationship
+            relationship_type = random.choice(predicate_options)
+            relationship = relationship_type(arg_names)
+
+        else:
+            relationship = debug_predicates[debug_index]
+            debug_index += 1
 
         # check for unique relationship
         unique = True
@@ -389,6 +411,9 @@ def generate_scenario(driver, male_names, female_names, hard_sample_count, num_p
             # print("Failed! Adding \"" + relationship.get_nl_string() + "\" was a Contradiction...")
             # Failed! Need to undo all of that work...
             # Remove relationships that we added...
+            if debug_predicates is not None:
+                print("Unexpected failure!!!")
+
             failcount += 1
             for t_id in transact_ids:
                 temp = driver.execute_query("Match ()-[r {transact_id:$transact_id}]->() DELETE r",
@@ -437,13 +462,53 @@ def generate_scenario(driver, male_names, female_names, hard_sample_count, num_p
     combined_name_candidates = male_names + female_names
 
     # randomly bind remaining names
+    # TODO: How to check consistency for remaining names?
     for uid in nameset:
         if uid not in name_mapping:
+
+            # We need to try a gender, see if it's consistent
+            test_is_male = random.choice([True, False])
+
+            if test_is_male:
+                test_premise = Male(uid)
+            else:
+                test_premise = Female(uid)
+
+            transact_ids = [str(uuid.uuid4())]
+            temp = driver.execute_query(test_premise.addquery(), arg0=test_premise[0], arg1=test_premise[1],
+                                        implication_level=0, transact_id=transact_ids[0])
+
+            # TODO: Logic to clear & rebuild implication steps after every added node?
+            # It will allow our implication level number to be accurate...
+            # Expand implications... what can be inferred from current premises?
+            for a in range(max_implications):
+                # For now, a+1 is the implication level.
+                new_id = build_implications(driver, (a + 1))
+                if new_id is None:
+                    break
+                else:
+                    transact_ids.append(new_id)
+
+            # If this gender creates a contradiction, flip it; we have the answer now.
+            if not check_contradictions(driver, max_loop_length=num_people):
+                test_is_male = not test_is_male
+
+            # Remove needed records.
+            for t_id in transact_ids:
+                temp = driver.execute_query("Match ()-[r {transact_id:$transact_id}]->() DELETE r",
+                                            transact_id=t_id,
+                                            database_="neo4j")
+
+            if test_is_male:
+                gendered_name_set = male_names
+            else:
+                gendered_name_set = female_names
+
             # try to choose random name.
-            name = random.choice(combined_name_candidates)
+            name = random.choice(gendered_name_set)
             while name in used_names:
                 # Simple...
-                name = random.choice(combined_name_candidates)
+                name = random.choice(gendered_name_set)
 
             name_mapping[uid] = name
 
@@ -500,18 +565,19 @@ def convert_format(old_pickle, new_pickle):
     with open(new_pickle, 'wb') as f2:
         pickle.dump(scenarios, f2)
 
-def main(test_scenarios_path):
+def main(test_scenarios_path, num_scenarios=10000):
     # For now, generate a whole bunch of scenarios.
     print("Parsing names...")
     male_names, female_names = parse_names('names.txt')
     full_nameset = male_names + female_names
 
     print("Starting scenario generation...")
-    num_scenarios = 10000
+    # num_scenarios = 10000
 
     uri = "neo4j://localhost:7687"
     # Really basic local database for development. Not a production instance...
-    auth = ("neo4j", "") # local db, only for development...
+    db_pass = input("Enter db password: ")
+    auth = ("neo4j", db_pass) # local db, only for development...
 
     # Probability distribution for number of people, number of relationships involved.
     min_people = 4
@@ -536,13 +602,96 @@ def main(test_scenarios_path):
 
                 with open(test_scenarios_path, 'wb') as f:
                     pickle.dump(results, f)
-            results.append(generate_scenario(driver, male_names, female_names, num_people=num_people, num_rels_target=num_relations, hard_sample_count=hard_sample_count))
+
+            r = generate_scenario(driver, male_names, female_names, num_people=num_people,
+                                  num_rels_target=num_relations, hard_sample_count=hard_sample_count)
+            record = {
+                'people': r[0],
+                'premises': [x.get_nl_string() for x in r[1]],
+                'hard_infer_list': [x.get_nl_string() for x in r[3]],
+                'hard_infer_responses': [None for x in r[3]]
+            }
+            results.append(record)
 
     # Save results.
+    with open(test_scenarios_path, 'wb') as f:
+        pickle.dump(results, f)
 
     print("Done.")
 
+def rebuild_people_list(people_str):
+    startstr = re.split("[ ,.]+", people_str)
+    # no empty strings!
+    return list(filter(lambda x: len(x) > 0, startstr))
+
+# Quickly rebuild a set of predicates from a string, for debugging.
+def rebuild_predicate(pred_str):
+    predicate_type = None
+    for pred_key in STR_TO_PREDICATES.keys():
+        if pred_key.lower() in pred_str.lower():
+            predicate_type = STR_TO_PREDICATES[pred_key]
+            break
+
+    # rebuild predicate.
+    if predicate_type is None:
+        raise Exception("Cannot find predicate.")
+    if predicate_type == Male or predicate_type == Female:
+        raise Exception("Not handling this right now.")
+    else:
+        # find parameters
+        tokens = re.split("[ .]+", pred_str)
+        tokens = list(filter(lambda x: len(x) > 0, tokens))
+        return predicate_type([tokens[0], tokens[-1]])
+
+def debug_scenario():
+    # For now, generate a whole bunch of scenarios.
+    print("Parsing names...")
+    male_names, female_names = parse_names('names.txt')
+    full_nameset = male_names + female_names
+
+    print("Starting scenario generation...")
+    # num_scenarios = 10000
+
+    uri = "neo4j://localhost:7687"
+    # Really basic local database for development. Not a production instance...
+    db_pass = input("Enter db password: ")
+    auth = ("neo4j", db_pass)  # local db, only for development...
+
+    # debug_people = ["Carter", "Nevaeh", "Cecilia", "Isabelle", "Emilia", "Elena", "Ethan", "Henry"]
+    debug_people = rebuild_people_list("Carter, Nevaeh, Cecilia, Isabelle, Emilia, Elena, Ethan, Henry.")
+    # Isabelle is a sister of Emilia.
+    # Elena is a child of Cecilia.
+    # Henry is a child of Elena.
+    # Elena is a child of Emilia.
+    # Carter is a brother of Ethan.
+    # Carter is a parent of Henry.
+    # Nevaeh is a sister of Emilia.
+    # Isabelle is a sister of Cecilia.
+    # Carter is a father of Henry.
+    # Cecilia is a sister of Isabelle.
+    debug_predicates = [
+        rebuild_predicate("Isabelle is a sister of Emilia."),
+        rebuild_predicate("Elena is a child of Cecilia."),
+        rebuild_predicate("Henry is a child of Elena."),
+        rebuild_predicate("Elena is a child of Emilia."),
+        rebuild_predicate("Carter is a brother of Ethan."),
+        rebuild_predicate("Carter is a parent of Henry."),
+        rebuild_predicate("Nevaeh is a sister of Emilia."),
+        rebuild_predicate("Isabelle is a sister of Cecilia."),
+        rebuild_predicate("Carter is a father of Henry."),
+        rebuild_predicate("Cecilia is a sister of Isabelle."),
+    ]
+
+    with GraphDatabase.driver(uri, auth=auth) as driver:
+        generate_scenario(driver, male_names, female_names, 1, num_people=len(debug_people), num_rels_target=len(debug_predicates),
+                          debug_predicates=debug_predicates, debug_people=debug_people)
+
 if __name__ == "__main__":
-    main('Test_largeset.pickle')
+    # main('Test_largeset.pickle')
     # convert_format('Test_2000.pickle', 'Scenarios_2000.pickle')
     # convert_format('Test_largeset.pickle', 'Scenarios_10000.pickle')
+    # main('test_mini.pickle', 100)
+    main('test_moderate.pickle', 1000)
+
+    # Debugging
+    # debug_scenario()
