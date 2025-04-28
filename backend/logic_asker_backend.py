@@ -89,7 +89,7 @@ def generate_failures_background(num_processes=12):
 generator = Process(target=generate_failures_background)
 
 # Pulls a failure example from the queue for display on webpage
-@app.route('/pop_failure_example', methods=['POST'])
+@app.route('/get_failure_example', methods=['POST'])
 def generate_prompt():
     if scenario_failures.empty():
         print("ERROR: Tried to grab an example failure where there is none")
