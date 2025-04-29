@@ -4,15 +4,17 @@ import os
 import multiprocessing as mp
 import pickle
 
-# Absolute path to frontend directory gathered from relative location
+# Should only run once to fix the working directory
 if(__name__ == "__main__"):
     print(os.getcwd())
     os.chdir('..')
     print(os.getcwd())
 
+# Front end path is instantiated to make the flask app
 FRONTEND_PATH = os.path.abspath(os.path.join(os.getcwd(), "frontend"))
 app = Flask("WEBLLMREASONLIMIT", static_folder=os.path.join(FRONTEND_PATH), template_folder=FRONTEND_PATH)
 
+# This queue will store prompts and responses for failed responses
 scenario_failures = mp.Queue()
 
 def build_prompts(scenario):
