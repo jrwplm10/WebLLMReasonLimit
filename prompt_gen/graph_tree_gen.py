@@ -176,6 +176,97 @@ class Brother(PredicatePattern):
         variable_preamble = "MATCH (a:Person {name:$arg0}) MATCH (b:Person {name:$arg1})"
         return variable_preamble + " MERGE (a)-[r:Brother]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level ON MATCH SET r.implication_level = $implication_level"
 
+# additional child relationships
+class Son(PredicatePattern):
+    def __init__(self, arglist):
+        super().__init__(arglist)
+        self.graphDBType = "Son"
+
+    def get_nl_string(self):
+        return self.arglist[0] + " is a son of " + self.arglist[1]
+
+    def addquery(self):
+        variable_preamble = "MATCH (a:Person {name:$arg0}) MATCH (b:Person {name:$arg1})"
+        return variable_preamble + " MERGE (a)-[r:Son]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level ON MATCH SET r.implication_level = $implication_level"
+
+class Daughter(PredicatePattern):
+    def __init__(self, arglist):
+        super().__init__(arglist)
+        self.graphDBType = "Daughter"
+
+    def get_nl_string(self):
+        return self.arglist[0] + " is a daughter of " + self.arglist[1]
+
+    def addquery(self):
+        variable_preamble = "MATCH (a:Person {name:$arg0}) MATCH (b:Person {name:$arg1})"
+        return variable_preamble + " MERGE (a)-[r:Daughter]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level ON MATCH SET r.implication_level = $implication_level"
+
+
+# Infer-only relationships
+class Grandparent(PredicatePattern):
+    def __init__(self, arglist):
+        super().__init__(arglist)
+        self.graphDBType = "Grandparent"
+
+    def get_nl_string(self):
+        return self.arglist[0] + " is a grandparent of " + self.arglist[1]
+
+    def addquery(self):
+        variable_preamble = "MATCH (a:Person {name:$arg0}) MATCH (b:Person {name:$arg1})"
+        return variable_preamble + " MERGE (a)-[r:Grandparent]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level ON MATCH SET r.implication_level = $implication_level"
+
+
+class GrandMother(PredicatePattern):
+    def __init__(self, arglist):
+        super().__init__(arglist)
+        self.graphDBType = "Grandmother"
+
+    def get_nl_string(self):
+        return self.arglist[0] + " is a grandmother of " + self.arglist[1]
+
+    def addquery(self):
+        variable_preamble = "MATCH (a:Person {name:$arg0}) MATCH (b:Person {name:$arg1})"
+        return variable_preamble + " MERGE (a)-[r:Grandmother]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level ON MATCH SET r.implication_level = $implication_level"
+
+class GrandFather(PredicatePattern):
+    def __init__(self, arglist):
+        super().__init__(arglist)
+        self.graphDBType = "Grandfather"
+
+    def get_nl_string(self):
+        return self.arglist[0] + " is a grandfather of " + self.arglist[1]
+
+    def addquery(self):
+        variable_preamble = "MATCH (a:Person {name:$arg0}) MATCH (b:Person {name:$arg1})"
+        return variable_preamble + " MERGE (a)-[r:Grandfather]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level ON MATCH SET r.implication_level = $implication_level"
+
+
+class Aunt(PredicatePattern):
+    def __init__(self, arglist):
+        super().__init__(arglist)
+        self.graphDBType = "Aunt"
+
+    def get_nl_string(self):
+        return self.arglist[0] + " is an aunt of " + self.arglist[1]
+
+    def addquery(self):
+        variable_preamble = "MATCH (a:Person {name:$arg0}) MATCH (b:Person {name:$arg1})"
+        return variable_preamble + " MERGE (a)-[r:Aunt]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level ON MATCH SET r.implication_level = $implication_level"
+
+class Uncle(PredicatePattern):
+    def __init__(self, arglist):
+        super().__init__(arglist)
+        self.graphDBType = "Uncle"
+
+    def get_nl_string(self):
+        return self.arglist[0] + " is an uncle of " + self.arglist[1]
+
+    def addquery(self):
+        variable_preamble = "MATCH (a:Person {name:$arg0}) MATCH (b:Person {name:$arg1})"
+        return variable_preamble + " MERGE (a)-[r:uncle]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level ON MATCH SET r.implication_level = $implication_level"
+
+
+
 STR_TO_PREDICATES = {
     'Male': Male,
     'Female': Female,
@@ -186,6 +277,15 @@ STR_TO_PREDICATES = {
     'Sibling': Sibling,
     'Sister': Sister,
     'Brother': Brother,
+    'Son': Son,
+    'Daughter': Daughter,
+    # infer only below
+    'Grandparent': Grandparent,
+    'Grandmother': GrandMother,
+    'Grandfather': GrandFather,
+    'Aunt': Aunt,
+    'Uncle': Uncle
+
 }
 
 
@@ -259,7 +359,24 @@ def build_implications(db_driver, implication_level):
         # Siblings are two-way.
         "MATCH (a:Person)-[:Sibling]->(b:Person) MERGE (b)-[r:Sibling]->(a) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
         # Siblings are transitive, given scenario changes.
-        "MATCH (a:Person)-[:Sibling]->(b:Person)-[:Sibling]->(c:Person) MERGE (a)-[r:Sibling]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level"
+        "MATCH (a:Person)-[:Sibling]->(b:Person)-[:Sibling]->(c:Person) WHERE a <> c MERGE (a)-[r:Sibling]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        # Gendered children imply child.
+        "MATCH (a:Person)-[:Son]->(b:Person) MERGE (a)-[r:Child]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        "MATCH (a:Person)-[:Daughter]->(b:Person) MERGE (a)-[r:Child]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        # children with gender imply son/daughter.
+        "MATCH (a:Person)<-[:Male]-(a:Person)-[:Child]->(b:Person) MERGE (a)-[r:Son]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        "MATCH (a:Person)<-[:Female]-(a:Person)-[:Child]->(b:Person) MERGE (a)-[r:Daughter]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        # Gender implications of son/daughter
+        "MATCH (a:Person)-[:Son]->(b:Person) MERGE (a)-[r:Male]->(a) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        "MATCH (a:Person)-[:Daughter]->(b:Person) MERGE (a)-[r:Female]->(a) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        # Implication only relationships here.
+        # Grandparentage
+        "MATCH (a:Person)-[:Parent]->(b:Person)-[:Parent]->(c:Person) MERGE (a)-[r:Grandparent]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        "MATCH (a:Person)-[:Male]->(a:Person)-[:Grandparent]->(c:Person) MERGE (a)-[r:Grandfather]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        "MATCH (a:Person)-[:Female]->(a:Person)-[:Grandparent]->(c:Person) MERGE (a)-[r:Grandmother]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        # Aunts/uncles
+        "MATCH (a:Person)-[:Male]->(a:Person)-[:Sibling]->(c:Person)-[:Parent]->(d:Person) MERGE (a)-[r:Uncle]->(d) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        "MATCH (a:Person)-[:Female]->(a:Person)-[:Sibling]->(c:Person)-[:Parent]->(d:Person) MERGE (a)-[r:Aunt]->(d) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
     ]
 
     for impl in implications:
@@ -299,7 +416,9 @@ def check_contradictions(db_driver, max_loop_length):
         "MATCH (a:Person)-[:Child]->(p:Person)-[:Child]->(a:Person) RETURN a",
         # No parent loops!!!. Inspiration: https://stackoverflow.com/questions/45427562/find-loops-in-neo4j
         # Note: Doing some ugly string sub here... parameters not working!
-        "MATCH (p:Person)(()-[:Parent]->()){1,{max_loop_length}}(p:Person) RETURN p"
+        "MATCH (p:Person)(()-[:Parent]->()){1,{max_loop_length}}(p:Person) RETURN p",
+        # Parents cannot have shared ancestry
+        "MATCH (p:Person)-[:Child]->(a:Person)(()-[:Parent|Sibling]->()){1,{max_loop_length}}(b:Person)<-[:Child]-(p:Person) WHERE a<>b RETURN p"
     ]
 
     for test in contradictions:
@@ -331,11 +450,16 @@ def generate_scenario(driver, male_names, female_names, hard_sample_count, num_p
     max_implications = num_people  # Maximum number of times we expand implications.
 
     # So we don't hang forever...
-    max_tries = num_rels_target * 20
+    max_tries = num_rels_target * 3
 
+    # Some predicates are more complicated to add, so only the subset here is added.
     predicate_options = [
-        Parent, Mother, Father, Child, Sibling, Sister, Brother
+        Parent, Mother, Father, Child, Son, Daughter, Sibling, Sister, Brother,
     ]
+
+    # Balance parent/child implying relationships with sibling/brother relationships
+    # balance 6/9 with 3/9
+    predicate_prob_weights = [1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 2/9, 2/9, 2/9]
 
     premises = []
 
@@ -367,12 +491,21 @@ def generate_scenario(driver, male_names, female_names, hard_sample_count, num_p
             arg_names = random.sample(nameset, k=2)
 
             # Randomly choose a relationship
-            relationship_type = random.choice(predicate_options)
+            # relationship_type = random.choice(predicate_options)
+            #
+            # if tries == 1:
+            #     # Force sibling for testing!
+            #     relationship_type = Sibling
+            # else:
+            relationship_type = random.choices(predicate_options, weights=predicate_prob_weights)[0]
+
+
             relationship = relationship_type(arg_names)
 
         else:
             relationship = debug_predicates[debug_index]
             debug_index += 1
+
 
         # check for unique relationship
         unique = True
@@ -424,7 +557,9 @@ def generate_scenario(driver, male_names, female_names, hard_sample_count, num_p
     # Search for "hard" questions, return a sampling.
     records, summary, keys = driver.execute_query("match (a)-[r]->(b) WHERE r.implication_level > 0 return a, r, b", database_="neo4j")
     # name: records[0][0].items().mapping['name'], relation: records[0][1].type
-    if hard_sample_count < len(records):
+
+    # Always grab the maximum number of samples!
+    if hard_sample_count < len(records) and False:
         rand_idxs =  random.sample(range(len(records)), k=hard_sample_count)
     else:
         rand_idxs = range(len(records))
@@ -470,13 +605,12 @@ def generate_scenario(driver, male_names, female_names, hard_sample_count, num_p
             test_is_male = random.choice([True, False])
 
             if test_is_male:
-                test_premise = Male(uid)
+                test_premise = Male([uid])
             else:
-                test_premise = Female(uid)
+                test_premise = Female([uid])
 
             transact_ids = [str(uuid.uuid4())]
-            temp = driver.execute_query(test_premise.addquery(), arg0=test_premise[0], arg1=test_premise[1],
-                                        implication_level=0, transact_id=transact_ids[0])
+            temp = driver.execute_query(test_premise.addquery(), arg0=test_premise[0], implication_level=0, transact_id=transact_ids[0])
 
             # TODO: Logic to clear & rebuild implication steps after every added node?
             # It will allow our implication level number to be accurate...
@@ -579,12 +713,23 @@ def main(test_scenarios_path, num_scenarios=10000):
     db_pass = input("Enter db password: ")
     auth = ("neo4j", db_pass) # local db, only for development...
 
+    total_hard_count = 0
+
     # Probability distribution for number of people, number of relationships involved.
     min_people = 4
     max_people = 8
 
+    # limit to just 6 people for computation's sake!
+    # min_people = 4
+    # max_people = 6
+
+    # Reduce max relationship to 9?
     min_rel = 3
     max_rel = 12
+
+    # # Reduce max relationship to 9?
+    # min_rel = 3
+    # max_rel = 9
 
     # Will encode most of the information in the "name" property. All nodes are Object, all relations are RELATION
     results = []
@@ -611,8 +756,10 @@ def main(test_scenarios_path, num_scenarios=10000):
                 'hard_infer_list': [x.get_nl_string() for x in r[3]],
                 'hard_infer_responses': [None for x in r[3]]
             }
+            total_hard_count += len(r[3])
             results.append(record)
 
+    print("Total number of hard inferences generated: " + str(total_hard_count))
     # Save results.
     with open(test_scenarios_path, 'wb') as f:
         pickle.dump(results, f)
@@ -712,6 +859,10 @@ if __name__ == "__main__":
     # convert_format('Test_largeset.pickle', 'Scenarios_10000.pickle')
     # main('test_mini.pickle', 100)
     # main('test_moderate.pickle', 1000)
+    # main('test_mini_more_relations2.pickle', 300)
+    # main('scenarios_set_medium.pickle', 1000)
+    main('scenarios_set_medium_large.pickle', 2000)
 
     # Debugging
-    debug_scenario()
+    # debug_scenario()
+    # Note: Post code! make it open source...

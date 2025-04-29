@@ -99,7 +99,8 @@ def build_prompts(scenario, scenario_augmenter=None, factor_redundancy=True, neg
         part = "The following scenario describes a family tree. "
         # part += "It may contain redundant relationships, but the described relationships described are correct. "
         # part += "There is a lot of complexity in this family tree. " # Silly test?
-        part += "You may assume siblings always share the same parents. "
+        # part += "You may assume siblings always share the same parents. " # Strengthening slightly
+        part += "Assume siblings always share the same parents. "
         # part += "The people in this scenario are "
         # for name in people_list:
         #     part = part + name + ", "
@@ -142,8 +143,16 @@ def build_prompts(scenario, scenario_augmenter=None, factor_redundancy=True, neg
             prompt_str = part
             for idx in range(len(and_set)):
                 prompt_str += " " + and_set[idx]
-                if idx < (len(and_set)-1):
-                    prompt_str += " and"
+                # More grammatical
+                if idx == (len(and_set) - 2):
+                    prompt_str += ", and"
+                elif idx < (len(and_set)-1):
+                    prompt_str += ","
+                # else:
+                #     prompt_str += " ,"
+
+                # if idx < (len(and_set)-1):
+                #     prompt_str += " and"
 
             prompt_str += "."
             prompts.append(prompt_str)
@@ -159,14 +168,15 @@ def build_prompts(scenario, scenario_augmenter=None, factor_redundancy=True, neg
 def query_completion(api_key, model, dev_prompt, question_scenario):
     openai_client = OpenAI(api_key=api_key)
 
+    # No dev prompt; only user prompt.
     completion = openai_client.chat.completions.create(
         model=model,
         messages=[
-            {"role": "developer",
-             "content": dev_prompt},
+            # {"role": "developer",
+            #  "content": dev_prompt},
             {
                 "role": "user",
-                "content": question_scenario,
+                "content": dev_prompt + "\nScenario:\n" + question_scenario,
             },
         ],
     )
@@ -284,7 +294,7 @@ def main(scenario_path, num_processes=12):
     for idx, s in enumerate(scenarios):
         # all_scenarios = build_prompts(s, scenario_augmenter=dup_answer_prem)
         # Generate scenarios, make some changes
-        all_scenarios = build_prompts(s, scenario_augmenter=None, factor_redundancy=True, negate_question_count=1, random_and_count=2)
+        all_scenarios = build_prompts(s, scenario_augmenter=None, factor_redundancy=True, negate_question_count=0, random_and_count=2)
         # hard_infer_indices.append(random.choice(range(len(all_scenarios[1:]))))
         # prompts.append(all_scenarios[hard_infer_indices[-1]])
 
@@ -299,6 +309,7 @@ def main(scenario_path, num_processes=12):
 
     print("Number of questions total to try: " + str(len(prompts)))
 
+    # resample_size = 40  # Should be virtually guaranteed to get one?
     resample_size = 500
     # resample_size = 750
     if len(prompts) > resample_size:
@@ -313,7 +324,7 @@ def main(scenario_path, num_processes=12):
         prompts = [prompts[x] for x in resample_idxs]
         scenario_indices = [scenario_indices[x] for x in resample_idxs]
 
-    multi_pool = multiprocessing.Pool()
+    multi_pool = multiprocessing.Pool(num_processes)
 
     scenario_answers = multi_pool.map(partial(query_completion, API_KEY, model, dev_prompt), prompts)
 
@@ -490,8 +501,11 @@ def analyze_results(scenario_path, expect_negative=True):
 if __name__ == '__main__':
     # main('test_mini.pickle', num_processes=40)
     # analyze_results('test_mini.pickle')
-    main('test_moderate.pickle', num_processes=25)
+    # main('test_moderate.pickle', num_processes=25)
     # analyze_results('test_moderate.pickle', expect_negative=True)
+
+    main('test_mini_more_relations2.pickle', num_processes=100)
+    # analyze_results('test_mini_more_relations2.pickle', expect_negative=False)
 
     # initially: 11% incorrect rate
     # fix 1:
@@ -560,6 +574,52 @@ if __name__ == '__main__':
     # Run 1x: Yes + Equivocation proportion: 0.044; Elapsed time: 137.332191 (50 processes)
     # Run 2x: Yes + Equivocation proportion: 0.054; Elapsed time: 131.83958 (100 processes)
     # Run 3x: Yes + Equivocation proportion: 0.06; Elapsed time: 100.312859 (25 processes)
+
+    # More relations, triple, no negation.
+    # Run 1x: Failure + Equivocation proportion: 0.104
+    # Looking pretty decent, but small sample size. Rerun two more times, on better sampling set.
+    # Run 2x: Failure + Equivocation proportion: 0.084; Elapsed time: 67.297514 @ 25 processes
+    # Run 3x: Failure + Equivocation proportion: 0.14; Elapsed time: 38.472506 @ 50 processes
+    # Run 4x: Failure + Equivocation proportion: 0.142; Elapsed time: 23.435363 @ 100 processes.
+    #
+
+    # Prompt tweak; to make the sibling logic clear...
+    # Run 1x: Failure + Equivocation proportion: 0.13
+    # Run 2x: Failure + Equivocation proportion: 0.106
+
+    # Estimate: 5 runs of 40; does it fit expected performance (Should get at least 1!)
+    # Run 1x: Failure + Equivocation proportion: 0.125
+    # Run 2x: Failure + Equivocation proportion: 0.15
+    # Run 3x: Failure + Equivocation proportion: 0.125
+    # Run 4x: Failure + Equivocation proportion: 0.1
+    # Run 5x: Failure + Equivocation proportion: 0.125
+
+    # No dev prompt:
+    # Run 1x: Failure + Equivocation proportion: 0.178
+    # Run 2x: Failure + Equivocation proportion: 0.15
+    # Run 3x: Failure + Equivocation proportion: 0.126
+
+    # Switch to double and, instead of triple:
+    # Run 1x: Failure + Equivocation proportion: 0.086
+    # Run 2x: Failure + Equivocation proportion: 0.088
+    # Run 3x:
+
+    # More grammatical triple and:
+    # Run 1x: Failure + Equivocation proportion: 0.148 Good!
+    # Run 2x: Failure + Equivocation proportion: 0.156
+
+    # Rerun: Fix parentage gender issue
+    # Run 1x: Failure + Equivocation proportion: 0.166
+    # Run 2x: Failure + Equivocation proportion: 0.152
+    # Run 3x: Failure + Equivocation proportion: 0.136
+
+    # Collect data for 3 cases:
+    # Simple case, basic relations + filtering.
+    # Expanded case, complex statement + filtering.
+    # Full case, complex statement + more relationships + filtering.
+    # Full case, grammatical complex statement + more relationships + filtering.
+
+
 
     # Ideas:
     # 2 negations? -> probably weak.
