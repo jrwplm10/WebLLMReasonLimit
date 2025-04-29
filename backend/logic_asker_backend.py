@@ -3,6 +3,7 @@ from openai import OpenAI
 import os
 import multiprocessing as mp
 import pickle
+from time import sleep
 
 # Should only run once to fix the working directory
 if __name__ == '__main__':
@@ -13,9 +14,6 @@ if __name__ == '__main__':
 # Front end path is instantiated to make the flask app
 FRONTEND_PATH = os.path.abspath(os.path.join(os.getcwd(), "frontend"))
 app = Flask("WEBLLMREASONLIMIT", static_folder=os.path.join(FRONTEND_PATH), template_folder=FRONTEND_PATH)
-
-# This queue will store prompts and responses for failed responses
-scenario_failures = mp.Queue()
 
 def build_prompts(scenario):
     part = "The following scenario describes a family tree. "
@@ -53,14 +51,14 @@ def query_completion(api_key, model, dev_prompt, failure_queue, question_scenari
 
     answer = completion.choices[0].message.content
     
-    print("Testing prompt:")
+    #print("Testing prompt:")
     if answer[-4:-1].lower() != "yes":
         print("\tFound failure")
+        print(answer)
         failure_queue.put([question_scenario, answer])
 
 def generate_failures_background(failure_queue):
     model = "gpt-4o"
-    print("start")
 
     dev_prompt = ("You are being prompted with a scenario. "
               "Your job is to determine the answer to the question as 'yes', 'no', or in the case that the answer is unknown, 'unknown'. "
@@ -81,22 +79,30 @@ def generate_failures_background(failure_queue):
     
     for s in scenarios:
         prompts = build_prompts(s)
+        print(failure_queue.empty())
 
         # All prompts are tested and failures are saved in queue
-        #print("Number of scenarios total to try: " + str(len(prompts)))
+        print("Number of scenarios total to try: " + str(len(prompts)))
         processes = []
+        timeout_counter = 0
         for prompt in prompts:
             process = mp.Process(target=query_completion, args=[API_KEY, model, dev_prompt, failure_queue, prompt])
             process.start()
             processes.append(process)
+            timeout_counter += 1
+            if timeout_counter >= 10:
+                print("Timeout time!")
+                sleep(5)
+                timeout_counter = 0
         for process in processes:
             process.join()
+        #print(list(failure_queue.queue))
         
 
 # Pulls a failure example from the queue for display on webpage
 @app.route('/get_failure_example', methods=['POST'])
 def generate_prompt():
-    global scenario_failures
+    scenario_failures = app.config["failures"]
     print(scenario_failures)
     if scenario_failures.empty():
         print("ERROR: Tried to grab an example failure where there is none")
@@ -118,7 +124,9 @@ def about():
     return render_template('about.html')
 
 if __name__ == '__main__':
+    fail_queue = mp.Queue(maxsize=5)
     # Initializes a background process for generating prompts
-    generator = mp.Process(target=generate_failures_background, args=[scenario_failures])
+    generator = mp.Process(target=generate_failures_background, args=[fail_queue])
     generator.start()
+    app.config["failures"] = fail_queue
     app.run(debug=True, use_reloader=False)
