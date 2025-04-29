@@ -133,44 +133,46 @@
                     <div class="singleBox" id="scenarioBox"></div>
                 </div>
                 <div class="promptBox" style="margin-top: 30%;">
-                    <strong>GPT-4 Response</strong>
+                    <strong>GPT-4 Response:</strong>
                     <div class="singleBox" id="responseBox"></div>
                 </div>
             </div>
         </div>
-        <button class="generateButton" id="generateScenarioButton">Generate Scenario & Questions</button>
-        <button class="generateButton" id="generateResponseButton">Generate Response</button>
+        <button class="generateButton" id="generateScenarioButton">Generate</button>
+        <!--<button class="generateButton" id="generateResponseButton">Generate Response</button>-->
         <div class="footer">CS555 Responsible AI - Final Project by Jeremy Lim, Collin Shields, Pedro Brussarski</div>
     </div>
 
     <script>
-
-        async function generateScenarioAndQuestions() {
-            try {
-                const response = await fetch('/generate_prompt', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                const data = await response.json();
-                const scenario = data.response;
-                
-                document.getElementById("scenarioBox").innerText = scenario;
-                //document.getElementById("easyQuestionBox").innerText = "Is Bob wearing boots?"; // Or extract dynamically if needed
-                //document.getElementById("hardQuestionBox").innerText = "Is it raining outside?";
+    async function generateScenarioAndQuestions() {
+        try {
+            const response = await fetch('/get_failure_example', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
             
-            } catch (error) {
-                
-                console.error('Error generating scenario and questions:', error);
-                alert('Failed to generate scenario and questions. Please try again.');
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById("scenarioBox").innerText = data.prompt;
+                document.getElementById("responseBox").innerText = data.response;
+            } else {
+                alert('No failure examples available yet. Please wait.');
             }
+        } catch (error) {
+            console.error('Error generating scenario and questions:', error);
+            alert('Failed to generate scenario and questions. Please try again.');
         }
+    }
+
+    // Event listener for 'Generate Scenario & Questions' button
+    document.getElementById("generateScenarioButton").addEventListener("click", generateScenarioAndQuestions);
 
 
 
-async function generateLLMResponse(scenario) {
+/* async function generateLLMResponse(scenario) {
             try {
                 const response = await fetch('/query_openai', {
                     method: 'POST',
@@ -190,14 +192,11 @@ async function generateLLMResponse(scenario) {
                 console.error('Error generating LLM response:', error);
                 alert('Failed to generate response. Please try again.');
     }
-}
+} */
 
-
-        // Event listener for 'Generate Scenario & Questions' button
-        document.getElementById("generateScenarioButton").addEventListener("click", generateScenarioAndQuestions);
 
         // Event listener for 'Generate Response' button
-        document.getElementById("generateResponseButton").addEventListener("click", function() {
+       /*  document.getElementById("generateResponseButton").addEventListener("click", function() {
             // const easyQuestion = document.getElementById("easyQuestionBox").innerText;
             // const hardQuestion = document.getElementById("hardQuestionBox").innerText;
 
@@ -208,7 +207,7 @@ async function generateLLMResponse(scenario) {
             } else {
                 alert("Please generate the scenario and questions first.");
             }
-        });
+        }); */
     </script>
 </body>
 </html>
