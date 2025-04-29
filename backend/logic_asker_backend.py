@@ -1,25 +1,19 @@
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 import os
-import multiprocessing
-from multiprocessing import Process
-from functools import partial
-import queue
-
-with open("keys/openai.key", 'r') as f:
-    API_KEY = f.readline()
-    API_KEY = API_KEY.rstrip('\n')
-openai_client = OpenAI(api_key=API_KEY)
+import multiprocessing as mp
+import pickle
 
 # Absolute path to frontend directory gathered from relative location
-FRONTEND_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
+if(__name__ == "__main__"):
+    print(os.getcwd())
+    os.chdir('..')
+    print(os.getcwd())
 
-app = Flask(__name__,
-            static_folder=os.path.join(FRONTEND_PATH),
-            template_folder=FRONTEND_PATH)
+FRONTEND_PATH = os.path.abspath(os.path.join(os.getcwd(), "frontend"))
+app = Flask("WEBLLMREASONLIMIT", static_folder=os.path.join(FRONTEND_PATH), template_folder=FRONTEND_PATH)
 
-scenario_failures = queue.Queue()
-GENERATING = False
+scenario_failures = mp.Queue()
 
 def build_prompts(scenario):
     part = "The following scenario describes a family tree. "
@@ -40,7 +34,7 @@ def build_prompts(scenario):
         prompts.append(part + question + ".")
     return prompts
 
-def query_completion(api_key, model, dev_prompt, question_scenario):
+def query_completion(api_key, model, dev_prompt, failure_queue, question_scenario):
     openai_client = OpenAI(api_key=api_key)
 
     completion = openai_client.chat.completions.create(
@@ -59,10 +53,13 @@ def query_completion(api_key, model, dev_prompt, question_scenario):
     
     if answer[-4:-1].lower() != "yes":
         print("Found failure")
-        scenario_failures.put([question_scenario, answer])
+        failure_queue.put([question_scenario, answer])
+    
+    exit()
 
-def generate_failures_background(num_processes=12):
+def generate_failures_background(failure_queue):
     model = "gpt-4o"
+    print("start")
 
     dev_prompt = ("You are being prompted with a scenario. "
               "Your job is to determine the answer to the question as 'yes', 'no', or in the case that the answer is unknown, 'unknown'. "
@@ -70,27 +67,35 @@ def generate_failures_background(num_processes=12):
               "End your response with 'yes', 'no', or 'unknown', specifically structured as 'Final Answer = [Your Answer]'. "
               "Your response should ONLY contain a paragraph of reasoning and a final answer.")
     
-    while(GENERATING):
-        # Generate a scenario
-        # Assumes dict with hard_infer_list contained within
-        scenario = generate_scenario()
+    # Generate a scenario **********
+    # Assumes dict with hard_infer_list contained within
+    #scenario = generate_scenario()
+    print(os.getcwd())
+    with open("prompt_gen/scenarios_set_medium_large.pickle", 'rb') as f:
+        scenarios = pickle.load(f)
     
-        # Build prompts
-        prompts = build_prompts(scenario)
+    with open("backend/keys/openai.key", 'r') as f:
+        API_KEY = f.readline()
+        API_KEY = API_KEY.rstrip('\n')
+    
+    for s in scenarios:
+        prompts = build_prompts(s)
 
         # All prompts are tested and failures are saved in queue
-        print("Number of scenarios total to try: " + str(len(prompts)))
-        multi_pool = multiprocessing.Pool()
-        multi_pool.map(partial(query_completion, API_KEY, model, dev_prompt), prompts)
-        multi_pool.close()
-        multi_pool.join()
-
-# Initializes a background process for generating prompts
-generator = Process(target=generate_failures_background)
+        #print("Number of scenarios total to try: " + str(len(prompts)))
+        processes = []
+        for prompt in prompts:
+            process = mp.Process(target=query_completion, args=[API_KEY, model, dev_prompt, failure_queue, prompt])
+            process.start()
+            processes.append(process)
+        for process in processes:
+            process.join()
 
 # Pulls a failure example from the queue for display on webpage
 @app.route('/get_failure_example', methods=['POST'])
 def generate_prompt():
+    global scenario_failures
+    print(scenario_failures)
     if scenario_failures.empty():
         print("ERROR: Tried to grab an example failure where there is none")
         return jsonify({"success": False, "prompt" : None, "response" : None})
@@ -100,24 +105,18 @@ def generate_prompt():
 
 @app.route('/')
 def index():
-    if not GENERATING:
-        GENERATING = True
-        generator.start()
     return render_template('index.html')
 
 @app.route('/index')
 def index2():
-    if not GENERATING:
-        GENERATING = True
-        generator.start()
     return render_template('index.html')
 
 @app.route('/about')
 def about():
-    if GENERATING:
-        GENERATING = False
-        generator.join()
     return render_template('about.html')
 
 if __name__ == '__main__':
+    # Initializes a background process for generating prompts
+    generator = mp.Process(target=generate_failures_background, args=[scenario_failures])
+    generator.start()
     app.run(debug=True)
