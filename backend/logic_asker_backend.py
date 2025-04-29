@@ -5,7 +5,7 @@ import multiprocessing as mp
 import pickle
 
 # Should only run once to fix the working directory
-if(__name__ == "__main__"):
+if __name__ == '__main__':
     print(os.getcwd())
     os.chdir('..')
     print(os.getcwd())
@@ -53,11 +53,10 @@ def query_completion(api_key, model, dev_prompt, failure_queue, question_scenari
 
     answer = completion.choices[0].message.content
     
+    print("Testing prompt:")
     if answer[-4:-1].lower() != "yes":
-        print("Found failure")
+        print("\tFound failure")
         failure_queue.put([question_scenario, answer])
-    
-    exit()
 
 def generate_failures_background(failure_queue):
     model = "gpt-4o"
@@ -92,6 +91,7 @@ def generate_failures_background(failure_queue):
             processes.append(process)
         for process in processes:
             process.join()
+        
 
 # Pulls a failure example from the queue for display on webpage
 @app.route('/get_failure_example', methods=['POST'])
@@ -121,4 +121,4 @@ if __name__ == '__main__':
     # Initializes a background process for generating prompts
     generator = mp.Process(target=generate_failures_background, args=[scenario_failures])
     generator.start()
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)
