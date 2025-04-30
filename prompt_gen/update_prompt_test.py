@@ -9,17 +9,21 @@ import time
 import random
 from functools import partial
 import re
+import argparse
 
 import multiprocessing
 
-# Put your api key path here.
-with open("/home/jeremy/Documents/WPI_Spring_25/CS_555/Project/OpenAI_Api_free", 'r') as f:
-    API_KEY = f.readline()
-    API_KEY = API_KEY.rstrip('\n')
+DEV_PROMPT = ("You are being prompted with a scenario. "
+              "Your job is to determine the answer to the question as 'yes', 'no', or in the case that the answer is unknown, 'unknown'. "
+              "Provide a brief paragraph explaining your reasoning for your answer, but it is critical that this paragraph is brief and contained in one single paragraph with no line breaks. "
+              "End your response with 'yes', 'no', or 'unknown', specifically structured as 'Final Answer = [Your Answer]'. "
+              "Your response should ONLY contain a paragraph of reasoning and a final answer.")
 
 
 # A scenario augmentation function.
 NUM_DUPS = 3  # not too many...
+
+
 def dup_answer_prem(premise_list, people_list, question):
     # Extract people in question statement.
     important_people = get_question_subjects(question)
@@ -164,6 +168,13 @@ def build_prompts(scenario, scenario_augmenter=None, factor_redundancy=True, neg
 
     return prompts
 
+# Bindings specific for our demonstration version.
+def backend_build_scenario_prompts(scenario):
+    prompt_list =  build_prompts(scenario, scenario_augmenter=None, factor_redundancy=True, negate_question_count=0,
+                  random_and_count=2)
+    prompt_list = [DEV_PROMPT + "\nScenario:\n" + x for x in prompt_list]
+    return prompt_list
+
 # For multiprocessing.
 def query_completion(api_key, model, dev_prompt, question_scenario):
     openai_client = OpenAI(api_key=api_key)
@@ -199,6 +210,13 @@ def clear_data(dicts_list):
 
 # True if any redundancy, false otherwise
 def any_one_way_redundancy(premise_strings_list):
+    # Answers the question: Are any two predicates that have the same subject/object, with same ordering?
+    # yes example:
+    # Bob is a sibling of Alice.
+    # Bob is a brother of Alice.
+    # no example:
+    # Bob is a sibling of Alice.
+    # Alice is a sister of Bob.
     arg_pairings = {}
     for premise in premise_strings_list:
         tokens = re.split("[ ,.]+", premise)
@@ -216,6 +234,13 @@ def any_one_way_redundancy(premise_strings_list):
     return False
 
 def build_two_way_redundancy_dict(premise_strings_list):
+    # Answers the question: Are any two predicates that have the same two people in it?
+    # yes example:
+    # Bob is a sibling of Alice.
+    # Alice is a sister of Bob.
+    # no example:
+    # Bob is a sibling of Alice.
+    # Alice is the mother of Phil.
     arg_pairings = {}
     for premise in premise_strings_list:
         tokens = re.split("[ ,.]+", premise)
@@ -237,6 +262,7 @@ def build_two_way_redundancy_dict(premise_strings_list):
     return arg_pairings
 
 # Scenarios that have redundant information in them.
+# This tends to trick models into thinking that there's
 def specifically_redundant(scenarios_list):
     retlist = []
     for s in scenarios_list:
@@ -255,16 +281,22 @@ def specifically_not_redundant(scenarios_list):
     return retlist
 
 
-def main(scenario_path, num_processes=12):
-    # sequential evaluation.
-    openai_client = OpenAI(api_key=API_KEY)
+def main(scenario_path, output_path, key_path, sample_size, redundancy_setting, num_ands, num_nots, num_processes=100):
+    # Put your api key path here.
+    # "/home/jeremy/Documents/WPI_Spring_25/CS_555/Project/OpenAI_Api_free"
+    with open(key_path, 'r') as f:
+        API_KEY = f.readline()
+        API_KEY = API_KEY.rstrip('\n')
+
     model = "gpt-4o"
 
-    dev_prompt = ("You are being prompted with a scenario. "
-              "Your job is to determine the answer to the question as 'yes', 'no', or in the case that the answer is unknown, 'unknown'. "
-              "Provide a brief paragraph explaining your reasoning for your answer, but it is critical that this paragraph is brief and contained in one single paragraph with no line breaks. "
-              "End your response with 'yes', 'no', or 'unknown', specifically structured as 'Final Answer = [Your Answer]'. "
-              "Your response should ONLY contain a paragraph of reasoning and a final answer.")
+    dev_prompt = DEV_PROMPT
+
+    # dev_prompt = ("You are being prompted with a scenario. "
+    #           "Your job is to determine the answer to the question as 'yes', 'no', or in the case that the answer is unknown, 'unknown'. "
+    #           "Provide a brief paragraph explaining your reasoning for your answer, but it is critical that this paragraph is brief and contained in one single paragraph with no line breaks. "
+    #           "End your response with 'yes', 'no', or 'unknown', specifically structured as 'Final Answer = [Your Answer]'. "
+    #           "Your response should ONLY contain a paragraph of reasoning and a final answer.")
 
     # message_role = "user"
     # message_role = "developer"
@@ -276,7 +308,16 @@ def main(scenario_path, num_processes=12):
 
     print("Number of unique scenarios: " + str(len(scenarios)))
 
-    scenarios = specifically_redundant(scenarios)
+    redundancy_for_premise = False
+    if redundancy_setting.lower() == 'y':
+        scenarios = specifically_redundant(scenarios)
+        redundancy_for_premise = True
+    elif redundancy_setting.lower() == 'n':
+        scenarios = specifically_not_redundant(scenarios)
+
+    if num_ands > 0 or num_nots > 0:
+        redundancy_for_premise = True # We always do this sort of selection when we add operations on the premise.
+
     # scenarios = specifically_not_redundant(scenarios)
     # Number of unique scenarios: 1000
     # Number of unique scenarios, after filtering: 653 -> Rules out 35% of samples actually.
@@ -294,7 +335,7 @@ def main(scenario_path, num_processes=12):
     for idx, s in enumerate(scenarios):
         # all_scenarios = build_prompts(s, scenario_augmenter=dup_answer_prem)
         # Generate scenarios, make some changes
-        all_scenarios = build_prompts(s, scenario_augmenter=None, factor_redundancy=True, negate_question_count=0, random_and_count=2)
+        all_scenarios = build_prompts(s, scenario_augmenter=None, factor_redundancy=redundancy_for_premise, negate_question_count=num_nots, random_and_count=num_ands)
         # hard_infer_indices.append(random.choice(range(len(all_scenarios[1:]))))
         # prompts.append(all_scenarios[hard_infer_indices[-1]])
 
@@ -310,7 +351,7 @@ def main(scenario_path, num_processes=12):
     print("Number of questions total to try: " + str(len(prompts)))
 
     # resample_size = 40  # Should be virtually guaranteed to get one?
-    resample_size = 500
+    resample_size = sample_size
     # resample_size = 750
     if len(prompts) > resample_size:
 
@@ -360,62 +401,12 @@ def main(scenario_path, num_processes=12):
             equivocate_count += 1
             # print("Equivocation Failure")
 
-    # Slow!
-    # print("Starting sequential evaluation...")
-    # starttime = datetime.datetime.now()
-    # # sequential for now
-    # for idx, s in enumerate(scenarios):
-    #     # if idx % 10 == 0:
-    #     #     # save partial progress!
-    #     #     with open(scenario_path, 'wb') as f:
-    #     #         pickle.dump(scenarios, f)
-    #     print("Idx: " + str(idx) + "...")
-    #
-    #     all_scenarios = build_prompts(s)
-    #     # choose random hard.
-    #     # scenario_idx = random.choice(range(len(all_scenarios[1:])))
-    #     # question_scenario = all_scenarios[scenario_idx+1]
-    #     scenario_idx = random.choice(range(len(all_scenarios)))
-    #     question_scenario = all_scenarios[scenario_idx]
-    #
-    #     completion = openai_client.chat.completions.create(
-    #         model=model,
-    #         messages=[
-    #             {"role": "developer",
-    #              "content": dev_prompt},
-    #             {
-    #                 "role": "user",
-    #                 "content": question_scenario,
-    #             },
-    #         ],
-    #     )
-    #
-    #     answer = completion.choices[0].message.content
-    #     if 'hard_infer_successes' not in s:
-    #         # initialize.
-    #         s['hard_infer_successes'] = [None] * len(s['hard_infer_responses'])
-    #
-    #     s['hard_infer_responses'][scenario_idx] = answer
-    #
-    #     if answer[-4:-1].lower() == "yes":
-    #         print("Success")
-    #         s['hard_infer_successes'][scenario_idx] = "yes"
-    #     elif answer[-3:-1].lower() == "no":
-    #         # Parse failures will go here too.
-    #         s['hard_infer_successes'][scenario_idx] = "no"
-    #         print("Hard Failure")
-    #     else:
-    #         s['hard_infer_successes'][scenario_idx] = "unknown"
-    #         print("Equivocation Failure")
-    #
-    #     time.sleep(0.1)
-
     # write results.
-    with open(scenario_path, 'wb') as f:
+    with open(output_path, 'wb') as f:
         pickle.dump(scenarios, f)
 
     # make json version
-    with open(os.path.splitext(scenario_path)[0] + '.json', 'w') as f2:
+    with open(os.path.splitext(output_path)[0] + '.json', 'w') as f2:
         json.dump(scenarios, f2)
 
     elapsed = datetime.datetime.now() - starttime
@@ -483,7 +474,7 @@ def analyze_results(scenario_path, expect_negative=True):
     with open("incorrect_examples.txt", 'w') as f2:
         f2.write('Listed examples:\n')
         for ex in examples:
-            f2.write('PROMPT~~~~~~~~~~~~~~\n')
+            f2.write('SCENARIO PROMPT~~~~~\n')
             f2.write(newlineify(ex['prompt']) + '\n')
             f2.write('ANSWER~~~~~~~~~~~~~~\n')
             f2.write(newlineify(ex['answer']) + '\n')
@@ -499,12 +490,55 @@ def analyze_results(scenario_path, expect_negative=True):
     print("Done")
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    # If we run analysis mode instead, we just load a results file, collect proportions, and collect some results.
+    # It will also output an examples file for easy reading.
+    # NOTE: Dev prompt is currently missing!!!
+    parser.add_argument("--result_pickle_path", "-l", type=str)
+    parser.add_argument("--expect_negative", "-n", type=str,
+                        help="y if the model is correct when negative, n if the model is correct when negative.")
+
+    parser.add_argument("--api_key_path", "-t", type=str)
+    parser.add_argument("--pickle_input_path", "-i", type=str)
+    parser.add_argument("--pickle_output_path", "-o", type=str)
+
+    # Execution settings.
+    parser.add_argument("--num_processes", "-p", type=int)
+    parser.add_argument("--sample_size", "-s", type=int)  # Random sample size.
+
+    # Prompt settings.
+    parser.add_argument("--redundancy_setting", "-r", type=str,
+                        help="Enter y to explicitly filter for scenarios with duplication, n to filter for scenarios without duplication, i for no filtering.")
+    parser.add_argument("--num_ands", "-a", type=int,
+                        help="Enter the number of 'and' components to add to the prompt question.")
+    parser.add_argument("--num_nots", "-e", type=int,
+                        help="Enter the number of random negations to apply to the prompt question.")
+
+    args = parser.parse_args()
+
+    if args.result_pickle_path and args.expect_negative:
+        exp_neg = None
+        if args.expect_negative.lower() == 'y':
+            exp_neg = True
+        else:
+            exp_neg = False
+        analyze_results(args.result_pickle_path, expect_negative=exp_neg)
+    elif args.api_key_path and args.pickle_output_path and args.num_processes and args.redundancy_setting and args.sample_size\
+            and args.num_ands and args.num_nots and args.pickle_input_path:
+        main(args.pickle_input_path, args.pickle_output_path, args.api_key_path, args.sample_size,
+             args.redundancy_setting, args.num_ands, args.num_nots, num_processes=args.num_processes)
+        # main('test_mini_more_relations2.pickle', num_processes=100)
+    else:
+        print("Missing some arguments!")
+        parser.print_help()
+
     # main('test_mini.pickle', num_processes=40)
     # analyze_results('test_mini.pickle')
     # main('test_moderate.pickle', num_processes=25)
     # analyze_results('test_moderate.pickle', expect_negative=True)
 
-    main('test_mini_more_relations2.pickle', num_processes=100)
+    # main('test_mini_more_relations2.pickle', num_processes=100)
     # analyze_results('test_mini_more_relations2.pickle', expect_negative=False)
 
     # initially: 11% incorrect rate
@@ -619,17 +653,5 @@ if __name__ == '__main__':
     # Full case, complex statement + more relationships + filtering.
     # Full case, grammatical complex statement + more relationships + filtering.
 
-
-
-    # Ideas:
-    # 2 negations? -> probably weak.
-    # Combine negation and normal in same test set - are they attacking different weaknesses? Would you see improvement?
-    # Add more relationships -> HARD, scenario generation work!
-    #
-
-
-
-# For report:
-# overall results
-# Redundant premises
-# no redundant premises
+    # For gen_standard_2000.pickle:
+    # Total number of hard inferences generated: 53906
