@@ -54,6 +54,7 @@ def query_completion(api_key, model, dev_prompt, failure_queue, question_scenari
     #print("Testing prompt:")
     if answer[-4:-1].lower() != "yes":
         print("\tFound failure")
+        print(question_scenario)
         print(answer)
         failure_queue.put([question_scenario, answer])
 
