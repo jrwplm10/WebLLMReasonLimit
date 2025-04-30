@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PROJECT NAME | GPT-4</title>
+    <title>CS555 Responsible AI Final Project | GPT-4o-mini</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -122,9 +122,9 @@
     <div class="container">
         <div class="top-menu">
             <button onclick="location.href='about'">About</button>
-            <button onclick="location.href='index'">GPT-4</button>
+            <button onclick="location.href='index'">GPT-4o-mini</button>
         </div>
-        <div class="header">GPT-4 Logical Reasoning Demo</div>
+        <div class="header">GPT-4o-mini Logical Reasoning Demo</div>
         <p style="margin-left: 15%; font-weight: bold;">Click the 'Generate' button below</p>
         <div class="content">
             <div class="contentStack">
@@ -133,13 +133,12 @@
                     <div class="singleBox" id="scenarioBox"></div>
                 </div>
                 <div class="promptBox" style="margin-top: 5%;">
-                    <strong>GPT-4 Response:</strong>
+                    <strong>GPT-4o-mini Response:</strong>
                     <div class="singleBox" id="responseBox"></div>
                 </div>
             </div>
         </div>
         <button class="generateButton" id="generateScenarioButton">Generate</button>
-        <!--<button class="generateButton" id="generateResponseButton">Generate Response</button>-->
         <div class="footer">CS555 Responsible AI - Final Project by Jeremy Lim, Collin Shields, Pedro Brussarski</div>
     </div>
 
@@ -170,44 +169,6 @@
     // Event listener for 'Generate Scenario & Questions' button
     document.getElementById("generateScenarioButton").addEventListener("click", generateScenarioAndQuestions);
 
-
-
-/* async function generateLLMResponse(scenario) {
-            try {
-                const response = await fetch('/query_openai', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ prompt: scenario, model_name: "gpt-4" })
-                });
-                
-                const data = await response.json();
-                const generatedResponse = data.response;
-
-                document.getElementById("responseBox").innerText = generatedResponse;
-                
-                
-            } catch (error) {
-                console.error('Error generating LLM response:', error);
-                alert('Failed to generate response. Please try again.');
-    }
-} */
-
-
-        // Event listener for 'Generate Response' button
-       /*  document.getElementById("generateResponseButton").addEventListener("click", function() {
-            // const easyQuestion = document.getElementById("easyQuestionBox").innerText;
-            // const hardQuestion = document.getElementById("hardQuestionBox").innerText;
-
-            const scenarioInput = document.getElementById("scenarioBox").innerText;
-
-            if (scenarioInput) {
-                generateLLMResponse(scenarioInput);
-            } else {
-                alert("Please generate the scenario and questions first.");
-            }
-        }); */
     </script>
 </body>
 </html>
