@@ -1,6 +1,6 @@
 # jlim@wpi.edu
 # Basic scenario generation for the family tree scenario.
-# Inspired by logicAsker and Prolog.
+# Inspired by logicAsker and the Prolog language
 import datetime
 # Inspiration: https://stackoverflow.com/questions/2823316/generate-a-random-letter-in-python
 import string
@@ -9,6 +9,8 @@ import copy
 import uuid
 import pickle
 import re
+import argparse
+import getpass
 
 # Using neo4j for building a knowledge base, checking relationships
 import neo4j
@@ -42,7 +44,7 @@ class PredicatePattern:
         # implication_level - number denoting how many steps needed to create this relationship.
         #  Level 0 means it's part of the premises.
         #  Levels 1+ require 1+ executions of build_implications to derive.
-        # We can promote Level 1+ implications to Level 0.
+        # We can promote Level 1+ implications to Level 0, if we were lucky enough to sample them during generation.
         return ""
 
     # Print the natural language form of this predicate.
@@ -52,13 +54,6 @@ class PredicatePattern:
     def is_equal(self, otherPredicate):
         # A predicate is equal if it has the same predicate list, and is the same class.
         return (type(self) == type(otherPredicate)) and (self.arglist == otherPredicate.arglist)
-    #
-    # # For rebinding names.
-    # def rebind_args(self, argslist):
-    #     self.argslist = argslist
-    #
-    # def get_args(self, argslist):
-    #     return self.argslist
 
 
 class Male(PredicatePattern):
@@ -327,7 +322,7 @@ def parse_names(name_path):
 # Build all implications based on the rules we defined here.
 # Return an id to track all of the implications we added, or none if nothing was added!
 # Note: This will need to be run multiple times most likely.
-def build_implications(db_driver, implication_level):
+def build_implications(db_driver, implication_level, simple_subset=False):
     transact_id = str(uuid.uuid4())
     num_records_created = 0
 
@@ -361,23 +356,30 @@ def build_implications(db_driver, implication_level):
         # Siblings are transitive, given scenario changes.
         "MATCH (a:Person)-[:Sibling]->(b:Person)-[:Sibling]->(c:Person) WHERE a <> c MERGE (a)-[r:Sibling]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
         # Gendered children imply child.
-        "MATCH (a:Person)-[:Son]->(b:Person) MERGE (a)-[r:Child]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
-        "MATCH (a:Person)-[:Daughter]->(b:Person) MERGE (a)-[r:Child]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
-        # children with gender imply son/daughter.
-        "MATCH (a:Person)<-[:Male]-(a:Person)-[:Child]->(b:Person) MERGE (a)-[r:Son]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
-        "MATCH (a:Person)<-[:Female]-(a:Person)-[:Child]->(b:Person) MERGE (a)-[r:Daughter]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
-        # Gender implications of son/daughter
-        "MATCH (a:Person)-[:Son]->(b:Person) MERGE (a)-[r:Male]->(a) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
-        "MATCH (a:Person)-[:Daughter]->(b:Person) MERGE (a)-[r:Female]->(a) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
-        # Implication only relationships here.
-        # Grandparentage
-        "MATCH (a:Person)-[:Parent]->(b:Person)-[:Parent]->(c:Person) MERGE (a)-[r:Grandparent]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
-        "MATCH (a:Person)-[:Male]->(a:Person)-[:Grandparent]->(c:Person) MERGE (a)-[r:Grandfather]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
-        "MATCH (a:Person)-[:Female]->(a:Person)-[:Grandparent]->(c:Person) MERGE (a)-[r:Grandmother]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
-        # Aunts/uncles
-        "MATCH (a:Person)-[:Male]->(a:Person)-[:Sibling]->(c:Person)-[:Parent]->(d:Person) MERGE (a)-[r:Uncle]->(d) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
-        "MATCH (a:Person)-[:Female]->(a:Person)-[:Sibling]->(c:Person)-[:Parent]->(d:Person) MERGE (a)-[r:Aunt]->(d) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
     ]
+
+    if not simple_subset:
+        # We add additional relationships for complexity.
+        addtl_relations = [
+            # Gendered children imply child.
+            "MATCH (a:Person)-[:Son]->(b:Person) MERGE (a)-[r:Child]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+            "MATCH (a:Person)-[:Daughter]->(b:Person) MERGE (a)-[r:Child]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+            # children with gender imply son/daughter.
+            "MATCH (a:Person)<-[:Male]-(a:Person)-[:Child]->(b:Person) MERGE (a)-[r:Son]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+            "MATCH (a:Person)<-[:Female]-(a:Person)-[:Child]->(b:Person) MERGE (a)-[r:Daughter]->(b) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+            # Gender implications of son/daughter
+            "MATCH (a:Person)-[:Son]->(b:Person) MERGE (a)-[r:Male]->(a) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+            "MATCH (a:Person)-[:Daughter]->(b:Person) MERGE (a)-[r:Female]->(a) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+            # Implication only relationships here.
+            # Grandparentage
+            "MATCH (a:Person)-[:Parent]->(b:Person)-[:Parent]->(c:Person) MERGE (a)-[r:Grandparent]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+            "MATCH (a:Person)-[:Male]->(a:Person)-[:Grandparent]->(c:Person) MERGE (a)-[r:Grandfather]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+            "MATCH (a:Person)-[:Female]->(a:Person)-[:Grandparent]->(c:Person) MERGE (a)-[r:Grandmother]->(c) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+            # Aunts/uncles
+            "MATCH (a:Person)-[:Male]->(a:Person)-[:Sibling]->(c:Person)-[:Parent]->(d:Person) MERGE (a)-[r:Uncle]->(d) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+            "MATCH (a:Person)-[:Female]->(a:Person)-[:Sibling]->(c:Person)-[:Parent]->(d:Person) MERGE (a)-[r:Aunt]->(d) ON CREATE SET r.transact_id = $transact_id, r.implication_level = $implication_level",
+        ]
+        implications = implications + addtl_relations
 
     for impl in implications:
         records, summary, keys = db_driver.execute_query(impl, transact_id=transact_id, implication_level=implication_level,
@@ -429,22 +431,16 @@ def check_contradictions(db_driver, max_loop_length):
 
         records, summary, keys = db_driver.execute_query(test, database_="neo4j")
 
-
         if len(records) != 0:
             return False
 
     return True
 
-def get_rand_inference_relation(db_driver):
-    # TODO: Query random relationship where implication_level > 0!
-    # Need to map back to one of our predicate patterns to return too.
-    return None
-
 
 QUESTION_STR = "Is it correct that {}?"
 
 # Quickstart: https://neo4j.com/docs/python-manual/current/
-def generate_scenario(driver, male_names, female_names, hard_sample_count, num_people=5, num_rels_target=7, debug_predicates=None, debug_people=None):
+def generate_scenario(driver, male_names, female_names, hard_sample_count, num_people=5, num_rels_target=7, debug_predicates=None, debug_people=None, simple_relations=False):
 
     # print("Begin scenario generation...")
     max_implications = num_people  # Maximum number of times we expand implications.
@@ -453,13 +449,18 @@ def generate_scenario(driver, male_names, female_names, hard_sample_count, num_p
     max_tries = num_rels_target * 3
 
     # Some predicates are more complicated to add, so only the subset here is added.
-    predicate_options = [
-        Parent, Mother, Father, Child, Son, Daughter, Sibling, Sister, Brother,
-    ]
-
-    # Balance parent/child implying relationships with sibling/brother relationships
-    # balance 6/9 with 3/9
-    predicate_prob_weights = [1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 2/9, 2/9, 2/9]
+    if not simple_relations:
+        predicate_options = [
+            Parent, Mother, Father, Child, Son, Daughter, Sibling, Sister, Brother,
+        ]
+        # Balance parent/child implying relationships with sibling/brother relationships
+        # balance 6/9 with 3/9
+        predicate_prob_weights = [1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 2 / 9, 2 / 9, 2 / 9]
+    else:
+        predicate_options = [
+            Parent, Mother, Father, Child, Sibling, Sister, Brother,
+        ]
+        predicate_prob_weights = None
 
     premises = []
 
@@ -699,11 +700,11 @@ def convert_format(old_pickle, new_pickle):
     with open(new_pickle, 'wb') as f2:
         pickle.dump(scenarios, f2)
 
-def main(test_scenarios_path, num_scenarios=10000):
+def generate_scenarios(test_scenarios_path, num_scenarios=10000, simple_relations=False, names_path='names.txt'):
     # For now, generate a whole bunch of scenarios.
     print("Parsing names...")
-    male_names, female_names = parse_names('names.txt')
-    full_nameset = male_names + female_names
+    male_names, female_names = parse_names(names_path)
+    # full_nameset = male_names + female_names
 
     print("Starting scenario generation...")
     # num_scenarios = 10000
@@ -718,10 +719,6 @@ def main(test_scenarios_path, num_scenarios=10000):
     # Probability distribution for number of people, number of relationships involved.
     min_people = 4
     max_people = 8
-
-    # limit to just 6 people for computation's sake!
-    # min_people = 4
-    # max_people = 6
 
     # Reduce max relationship to 9?
     min_rel = 3
@@ -749,7 +746,7 @@ def main(test_scenarios_path, num_scenarios=10000):
                     pickle.dump(results, f)
 
             r = generate_scenario(driver, male_names, female_names, num_people=num_people,
-                                  num_rels_target=num_relations, hard_sample_count=hard_sample_count)
+                                  num_rels_target=num_relations, hard_sample_count=hard_sample_count, simple_relations=simple_relations)
             record = {
                 'people': r[0],
                 'premises': [x.get_nl_string() for x in r[1]],
@@ -799,9 +796,10 @@ def debug_scenario():
     print("Starting scenario generation...")
     # num_scenarios = 10000
 
+    # URI for local neo4j database.
     uri = "neo4j://localhost:7687"
-    # Really basic local database for development. Not a production instance...
-    db_pass = input("Enter db password: ")
+    # Really basic local database for developing scenarios. Not a production instance
+    db_pass = getpass.getpass("Enter db password for local neo4j database: ")
     auth = ("neo4j", db_pass)  # local db, only for development...
 
     # # debug_people = ["Carter", "Nevaeh", "Cecilia", "Isabelle", "Emilia", "Elena", "Ethan", "Henry"]
@@ -854,6 +852,29 @@ def debug_scenario():
                           debug_predicates=debug_predicates, debug_people=debug_people)
 
 if __name__ == "__main__":
+
+    # generate_scenarios(test_scenarios_path, num_scenarios=10000, simple_relations=False, names_path='names.txt')
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output_pickle_path", "-o", type=str, required=True)
+    parser.add_argument("--names_path", "-t", type=str, required=True)
+    parser.add_argument("--num_scenarios", "-n", type=int, required=True)
+    parser.add_argument("--simple_relations", "-r", type=str, required=True, help="Enter y to generate using simplified rule set, n for the full rule set.")
+    args = parser.parse_args()
+
+    if args.simple_relations.lower() == 'y':
+        simple_relations = True
+    elif args.simple_relations.lower() == 'n':
+        simple_relations = False
+    else:
+        raise Exception("simple_relations parameter is not 'y' or 'n'!!!")
+
+    generate_scenarios(args.output_pickle_path, num_scenarios=args.num_scenarios, simple_relations=simple_relations, names_path=args.names_path)
+
+    # Ex: Generate 10 scenarios under the default case.
+    # python graph_tree_gen.py --output_pickle_path test_10.pickle --names_path names.txt --num_scenarios 10 --simple_relations
+
+
     # main('Test_largeset.pickle')
     # convert_format('Test_2000.pickle', 'Scenarios_2000.pickle')
     # convert_format('Test_largeset.pickle', 'Scenarios_10000.pickle')
@@ -861,8 +882,7 @@ if __name__ == "__main__":
     # main('test_moderate.pickle', 1000)
     # main('test_mini_more_relations2.pickle', 300)
     # main('scenarios_set_medium.pickle', 1000)
-    main('scenarios_set_medium_large.pickle', 2000)
+    # generate_scenarios('scenarios_set_medium_large.pickle', 2000)
 
     # Debugging
     # debug_scenario()
-    # Note: Post code! make it open source...
