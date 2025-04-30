@@ -491,6 +491,10 @@ def analyze_results(scenario_path, expect_negative=True):
 
 if __name__ == '__main__':
 
+    # for debugging.
+    # with open('gen_standard_2000.pickle', 'rb') as f:
+    #     scenarios = pickle.load(f)
+
     parser = argparse.ArgumentParser()
     # If we run analysis mode instead, we just load a results file, collect proportions, and collect some results.
     # It will also output an examples file for easy reading.
@@ -525,9 +529,11 @@ if __name__ == '__main__':
             exp_neg = False
         analyze_results(args.result_pickle_path, expect_negative=exp_neg)
     elif args.api_key_path and args.pickle_output_path and args.num_processes and args.redundancy_setting and args.sample_size\
-            and args.num_ands and args.num_nots and args.pickle_input_path:
+            and (not args.num_ands is None) and (not args.num_nots is None) and args.pickle_input_path:
         main(args.pickle_input_path, args.pickle_output_path, args.api_key_path, args.sample_size,
              args.redundancy_setting, args.num_ands, args.num_nots, num_processes=args.num_processes)
+
+        # Example usage: python update_prompt_test.py --api_key_path /home/jeremy/Documents/WPI_Spring_25/CS_555/Project/OpenAI_Api_free --pickle_input_path gen_simple_2000.pickle --pickle_output_path simple_nofilt.pickle --num_processes 100 --sample_size 2000 --redundancy_setting i --num_ands 0 --num_nots
         # main('test_mini_more_relations2.pickle', num_processes=100)
     else:
         print("Missing some arguments!")
@@ -655,3 +661,6 @@ if __name__ == '__main__':
 
     # For gen_standard_2000.pickle:
     # Total number of hard inferences generated: 53906
+
+    # For gen_simple_2000.pickle:
+    # Total number of hard inferences generated: 38700
