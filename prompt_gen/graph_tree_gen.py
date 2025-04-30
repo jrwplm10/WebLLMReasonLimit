@@ -531,7 +531,7 @@ def generate_scenario(driver, male_names, female_names, hard_sample_count, num_p
         # Expand implications... what can be inferred from current premises?
         for a in range(max_implications):
             # For now, a+1 is the implication level.
-            new_id = build_implications(driver, (a+1))
+            new_id = build_implications(driver, (a+1), simple_subset=simple_relations)
             if new_id is None:
                 break
             else:
@@ -618,7 +618,7 @@ def generate_scenario(driver, male_names, female_names, hard_sample_count, num_p
             # Expand implications... what can be inferred from current premises?
             for a in range(max_implications):
                 # For now, a+1 is the implication level.
-                new_id = build_implications(driver, (a + 1))
+                new_id = build_implications(driver, (a + 1), simple_subset=simple_relations)
                 if new_id is None:
                     break
                 else:
