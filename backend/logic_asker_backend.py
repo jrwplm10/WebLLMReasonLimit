@@ -59,7 +59,7 @@ def query_completion(api_key, model, dev_prompt, failure_queue, question_scenari
         failure_queue.put([question_scenario, answer])
 
 def generate_failures_background(failure_queue):
-    model = "gpt-4o-mini"
+    model = "gpt-4o"
 
     dev_prompt = ("You are being prompted with a scenario. "
               "Your job is to determine the answer to the question as 'yes', 'no', or in the case that the answer is unknown, 'unknown'. "
