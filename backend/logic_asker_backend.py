@@ -63,7 +63,7 @@ def generate_failures_background(failure_queue):
     dev_prompt = ("You are being prompted with a scenario. "
               "Your job is to determine the answer to the question as 'yes', 'no', or in the case that the answer is unknown, 'unknown'. "
               "Provide a brief paragraph explaining your reasoning for your answer, but it is critical that this paragraph is brief and contained in one single paragraph with no line breaks. "
-              "End your response with 'yes', 'no', or 'unknown', specifically structured as 'Final Answer = [Your Answer]'. "
+              "End your response with 'yes', 'no', or 'unknown', specifically structured as 'Final Answer = [Your Answer].'. "
               "Your response should ONLY contain a paragraph of reasoning and a final answer.")
     
     # Generate a scenario **********
