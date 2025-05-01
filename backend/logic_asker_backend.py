@@ -3,6 +3,7 @@ from openai import OpenAI
 import os
 import multiprocessing as mp
 import pickle
+import random
 from time import sleep
 
 # Should only run once to fix the working directory
@@ -11,18 +12,20 @@ if __name__ == '__main__':
     os.chdir('..')
     print(os.getcwd())
 
+import prompt_gen.update_prompt_test as gen_tools
+
 # Front end path is instantiated to make the flask app
 FRONTEND_PATH = os.path.abspath(os.path.join(os.getcwd(), "frontend"))
 app = Flask("WEBLLMREASONLIMIT", static_folder=os.path.join(FRONTEND_PATH), template_folder=FRONTEND_PATH)
 
 def build_prompts(scenario):
     part = "The following scenario describes a family tree. "
-    part += "It may contain redundant relationships, but the described relationships described are correct. "
+    # part += "It may contain redundant relationships, but the described relationships described are correct. "
     part += "You may assume siblings always share the same parents. "
-    part += "The people in this scenario are "
-    for name in scenario['people']:
-        part = part + name + ", "
-    part = part[:-2] + ". "
+    # part += "The people in this scenario are "
+    # for name in scenario['people']:
+    #     part = part + name + ", "
+    # part = part[:-2] + ". "
     
     for premises in scenario['premises']:
         part = part + premises + ". "
@@ -37,17 +40,28 @@ def build_prompts(scenario):
 def query_completion(api_key, model, dev_prompt, failure_queue, question_scenario):
     openai_client = OpenAI(api_key=api_key)
 
+    # We need to show the dev prompt. Put it in the user message body.
     completion = openai_client.chat.completions.create(
         model=model,
         messages=[
-            {"role": "developer",
-             "content": dev_prompt},
             {
                 "role": "user",
-                "content": question_scenario,
+                "content": dev_prompt + "\nScenario:\n" + question_scenario,
             },
         ],
     )
+
+    # completion = openai_client.chat.completions.create(
+    #     model=model,
+    #     messages=[
+    #         {"role": "developer",
+    #          "content": dev_prompt},
+    #         {
+    #             "role": "user",
+    #             "content": question_scenario,
+    #         },
+    #     ],
+    # )
 
     answer = completion.choices[0].message.content
     
@@ -77,10 +91,17 @@ def generate_failures_background(failure_queue):
     with open("backend/keys/openai.key", 'r') as f:
         API_KEY = f.readline()
         API_KEY = API_KEY.rstrip('\n')
-    
-    for s in scenarios:
-        prompts = build_prompts(s)
-        print(failure_queue.empty())
+
+    # randomly sample.
+    random.shuffle(scenarios)
+
+    for idx, s in enumerate(scenarios):
+
+        prompts = gen_tools.backend_build_scenario_prompts(s)
+        print("Scenario idx: " + str(idx) + "; # prompts: " + str(len(prompts)))
+        # prompts = build_prompts(s)
+        # print(failure_queue.empty())
+        print("Approx. queue size: " + str(failure_queue.qsize()))
 
         # All prompts are tested and failures are saved in queue
         print("Number of scenarios total to try: " + str(len(prompts)))
@@ -92,9 +113,10 @@ def generate_failures_background(failure_queue):
             processes.append(process)
             timeout_counter += 1
             if timeout_counter >= 10:
-                print("Timeout time!")
-                sleep(5)
+                # print("Timeout time!")
+                # sleep(5)
                 timeout_counter = 0
+
         for process in processes:
             process.join()
         #print(list(failure_queue.queue))
@@ -131,3 +153,5 @@ if __name__ == '__main__':
     generator.start()
     app.config["failures"] = fail_queue
     app.run(debug=True, use_reloader=False)
+
+    # To see this locally, look at this url: http://127.0.0.1:5000
