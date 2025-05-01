@@ -20,12 +20,12 @@ app = Flask("WEBLLMREASONLIMIT", static_folder=os.path.join(FRONTEND_PATH), temp
 
 def build_prompts(scenario):
     part = "The following scenario describes a family tree. "
-    part += "It may contain redundant relationships, but the described relationships described are correct. "
+    # part += "It may contain redundant relationships, but the described relationships described are correct. "
     part += "You may assume siblings always share the same parents. "
-    part += "The people in this scenario are "
-    for name in scenario['people']:
-        part = part + name + ", "
-    part = part[:-2] + ". "
+    # part += "The people in this scenario are "
+    # for name in scenario['people']:
+    #     part = part + name + ", "
+    # part = part[:-2] + ". "
     
     for premises in scenario['premises']:
         part = part + premises + ". "
